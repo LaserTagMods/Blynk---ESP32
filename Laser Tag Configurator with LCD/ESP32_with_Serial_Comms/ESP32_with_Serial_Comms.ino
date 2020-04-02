@@ -1,5 +1,5 @@
 /*
- * update 4/2/2020 annotations added
+ * update 4/2/2020 annotations added and copied over objects for setting up games
  *
  * Written by Jay "the man" Burden
  *
