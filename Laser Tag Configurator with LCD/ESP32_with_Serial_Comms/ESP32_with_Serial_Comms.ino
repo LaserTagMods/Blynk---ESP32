@@ -1,6 +1,7 @@
 /*
  * update 4/2/2020 annotations added and copied over objects for setting up games
  * update 4/3/2020 Cleaned up for more compatibility to serial comms programing
+ * update 4/3/2020 Was able to plug in set setting from serial for friendly fire and outdoor/indoor mode
  *
  * Written by Jay "the man" Burden
  *
@@ -262,14 +263,14 @@ int SetSlotB; // this is for weapon slot 1
 int SetSlotC; // this is for weapon slot 4 or melee used in pickups only (future)
 int SetTeam; // used to configure team player settings
 int SetTime; // used for in game timer functions on esp32 (future
-int SetODMode; // used to set indoor and outdoor modes
+int SetODMode=0; // used to set indoor and outdoor modes
 int SetWSMode; // used to enable player gun selection with lcd... (future)
 int SetGNDR; // used to change player to male/female
 int SetLives; // used for esp based game programs should be functional
 int SetRSPNMode; // used to set auto or manual respawns from bases/ir (future)
 int SetKillCnt; // to limit max kills
 int SetObjct; // to set objective goal counts
-int SetFF; // set game to friendly fire on/off
+int SetFF=0; // set game to friendly fire on/off (default is off)
 int SetAmmo; // enable auto replenish of ammunition or from bases/players only
 int AmmoGndr=0; // used to split ammo and gender variables because i piggy backed them on one ir protocol set
 
@@ -296,7 +297,7 @@ int lives = 0;
 
 bool RESPAWN = false; // trigger to enable auto respawn when killed in game
 bool GAMEOVER = false; // used to trigger game over and boot a gun out of play mode
-
+bool TAGGERUPDATE = false; // used to trigger sending data to ESP8266
 
 long startScan = 0; // part of BLE enabling
 
@@ -402,6 +403,7 @@ static void notifyCallback(
        *  
        *  more can be done with this, like using the ammo info to post to lcd
        */
+       TAGGERUPDATE=true;
       if ((tokenStrings[2] == "0") && (tokenStrings[4] == "0")) { // yes thats right folks... if we are out of ammo we set that cool trigger variable
         if ((tokenStrings[3] == "0")) {
           OutofAmmoA=true; // here is the variable for weapon slot 0
@@ -421,6 +423,7 @@ static void notifyCallback(
       /*health status update occured
        * can be used for updates on health as well as death occurance
        */
+       TAGGERUPDATE=true;
       health = tokenStrings[1].toInt();
       armor = tokenStrings[2].toInt();
       shield = tokenStrings[3].toInt();
@@ -554,25 +557,6 @@ class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
     } // onResult
 }; // MyAdvertisedDeviceCallbacks
 
-//******************************************************************************************
-// serial communications that is pinned to second core in set up
-// this is where we write to variable to configure settings to send over BLE to tagger
-void serialTask(void * params){
-  for(;;){
-    
-    String LCDText = String(ammo)+","+String(weap)+","+String(health)+","+String(armor)+","+String(shield)+","+String(lives);
-    SerialLCD.println(LCDText);
-    if(SerialLCD.available()){
-      String readtxt = SerialLCD.readStringUntil('\n');
-      Serial.println(readtxt);
-    }
-      
-    
-    delay(2000);
-  }
-  
-}
-TaskHandle_t  TaskSerial;
 
 //******************************************************************************************
 // after recieving the first notification from gun that says connect we enable this function
@@ -617,9 +601,9 @@ void taggedoutmode() {
   */
   RESPAWN = false;
 }
-
-//******************************************************************************************
-
+//****************************************************************************************
+//************** This sends Settings to Tagger *******************************************
+//****************************************************************************************
 // loads all the game configuration settings into the gun
 void gameconfigurator() {
   Serial.println("Running Game Configurator based upon recieved inputs");
@@ -651,8 +635,9 @@ void gameconfigurator() {
   Serial.println("Finished Game Configuration set up");
 }
 
-//******************************************************************************************
-
+//****************************************************************************************
+//************************ This starts a game *******************************************
+//****************************************************************************************
 // this starts a game
 void delaystart() {
   Serial.println("Starting Delayed Game Start");
@@ -872,6 +857,7 @@ void weaponsettingsB() {
 
 // sets and sends game settings based upon the stored settings
 void SetFFOutdoor() {
+  // token one of the following command is free for all, 0 is off and 1 is on
   if(SetODMode == 0 && SetFF == 1) {sendString("$GSET,1,0,1,0,1,0,50,1,*");}
   if(SetODMode == 1 && SetFF == 1) {sendString("$GSET,1,1,1,0,1,0,50,1,*");}
   if(SetODMode == 1 && SetFF == 0) {sendString("$GSET,0,1,1,0,1,0,50,1,*");}
@@ -919,6 +905,38 @@ void respawnplayer() {
   Serial.println("Player Respawned");
   RESPAWN = false;
 }
+
+//******************************************************************************************
+//******************************************************************************************
+//******************************************************************************************
+// serial communications that is pinned to second core in set up
+// this is where we write to variable to configure settings to send over BLE to tagger
+void serialTask(void * params){
+  for(;;){
+    
+    if (TAGGERUPDATE){
+      String LCDText = String(ammo)+","+String(weap)+","+String(health)+","+String(armor)+","+String(shield)+","+String(lives);
+      SerialLCD.println(LCDText);
+      TAGGERUPDATE=false;
+    }
+     if(SerialLCD.available()){
+      String readtxt = SerialLCD.readStringUntil('\n');
+      Serial.println(readtxt);
+      // it is important to ensure that all following processes only assign a value
+      // for a variable that is used by the other core to process and send BLE data
+      // to tagger, dont call objects in here that are potentially used by the other core
+      // What we need to do here is analyze the serial data from ESP8266 and do something with it
+
+      if(readtxt.toInt()==601) {SetODMode=0; Serial.println("Outdoor Mode On");}
+      if(readtxt.toInt()==602) {SetODMode=1; Serial.println("Indoor Mode On");}
+      if(readtxt.toInt()==603) {SetODMode=1; Serial.println("Stealth Mode On");}
+      
+      if(readtxt.toInt()==1401) {SetFF=1; Serial.println("Friendly Fire On");}
+      if(readtxt.toInt()==1400) {SetFF=0; Serial.println("Friendly Fire Off");}
+    }
+  }
+}
+TaskHandle_t  TaskSerial;
 
 //******************************************************************************************
 //******************************************************************************************
