@@ -19,6 +19,8 @@
  *  Updates and logs: (date - individual - changes)
  *  
  *  4/3/2020 - Jay - started incorporating and testing blynk in code, added annotations
+ *  4/3/2020 - Jay - added blynk write commands
+ *  4/3/2020 - Jay - Reconfigured sketch for running on local blynk server
  *  
  */ 
 
@@ -221,17 +223,20 @@ Format below: (ToESP32 value)(Setting)(Selection) (Virtual Pin) (Pin Value)
 #include <ESP8266WiFi.h> // used for setting up wifi comms
 #include <BlynkSimpleEsp8266.h> // used to run all necessary blynk objects/functions
 
-
+//**********************************************************************************
 //****************************  UPDATE THIS SECTION!!!!! ***************************
+//**********************************************************************************
 // You should get Auth Token in the Blynk App.
 // Go to the Project Settings (nut icon).
-char auth[] = "YourAuthToken";
+char auth[] = "wHfjglHvyD4qBv7PB8C9DKTY-NNp8VGr";
 
 // Your WiFi credentials.
 // Set password to "" for open networks.
-char ssid[] = "YourNetworkName";
-char pass[] = "YourPassword";
+char ssid[] = "Burtek Energy";
+char pass[] = "Sunpower2020";
+//**********************************************************************************
 //****************************  UPDATE THIS SECTION!!!!! ***************************
+//**********************************************************************************
 
 // set the LCD number of columns and rows (for a 4x20 LCD)
 int lcdColumns = 20;
@@ -586,7 +591,14 @@ void setup()
   lcd.backlight();
   lcd.print("Welcome to Battle Company!");
   // Start Blynk
-  Blynk.begin(auth, ssid, pass);
+  
+//**********************************************************************************
+//****************************  UPDATE THIS SECTION!!!!! ***************************
+//**********************************************************************************
+  Blynk.begin(auth, ssid, pass, IPAddress(192,168,1,80), 8080);
+//**********************************************************************************
+//****************************  UPDATE THIS SECTION!!!!! ***************************
+//**********************************************************************************
 
   // timer settings
   ESP32Read.setInterval(1L, ReadESP32Data); // Reading data from esp32 constantly
