@@ -1,18 +1,211 @@
 /*
  * update 4/2/2020 annotations added and copied over objects for setting up games
+ * update 4/3/2020 Cleaned up for more compatibility to serial comms programing
  *
  * Written by Jay "the man" Burden
  *
  * keep device in range of laser tag BLE enabled compatible device for it to work
  * This code requires an esp8266 to be paired via serial (reference esp8266 code)
- *      use pins 16 & 17 to connect to D8 & D7, respectively
+ *      use pins 16 & 17 to connect to D8 & D7, respectively, of ESP8266
  * optionally power from laser tag battery to the GRND and the VCC pins or power
  *      via usb or standalone battery
  * optionally install a transistor across reset pins on laser tag device to pin 4
  * this devices uses the serial communication to set tagger and game configuration settings
  * Note the sections labeled *****IMPORTANT***** as it requires customization on your part
  *
+ *Serial data recieved from ESP8266 is intended to trigger actions to perform upon the laser
+ *tag rifle
+ *
+ *Serial data sent to the ESP8266 is intended to be displayed on the LCD or for reporting
+ *to a server.
  */
+
+ /* 
+ *  Section intended for logging of action variable and intended results when
+ *  recieved from ESP8266. 
+ *  
+ *  Each time a value is sent to this ESP32 an action needs to perform once only
+ *  to configure settings as listed below
+ *  
+
+Format below: (ToESP32 value)(Setting)(Selection) (Virtual Pin) (Pin Value)
+0   Do nothing    None    N/A   N/A
+1   Weapon Slot 0 =   Player's Choice   V0    1
+2   Weapon Slot 0 =   Unarmed   V0    2
+3   Weapon Slot 0 =   AMR   V0    3
+4   Weapon Slot 0 =   Assault Rifle   V0    4
+5   Weapon Slot 0 =   Bolt Rifle    V0    5
+6   Weapon Slot 0 =   BurstRifle    V0    6
+7   Weapon Slot 0 =   ChargeRifle   V0    7
+8   Weapon Slot 0 =   Energy Launcher   V0    8
+9   Weapon Slot 0 =   Energy Rifle    V0    9
+10    Weapon Slot 0 =   Force Rifle   V0    10
+11    Weapon Slot 0 =   Ion Sniper    V0    11
+12    Weapon Slot 0 =   Laser Cannon    V0    12
+13    Weapon Slot 0 =   Plasma Sniper   V0    13
+14    Weapon Slot 0 =   Rail Gun    V0    14
+15    Weapon Slot 0 =   Rocket Launcher   V0    15
+16    Weapon Slot 0 =   Shotgun   V0    16
+17    Weapon Slot 0 =   SMG   V0    17
+18    Weapon Slot 0 =   Sniper Rifle    V0    18
+19    Weapon Slot 0 =   Stinger   V0    19
+20    Weapon Slot 0 =   Suppressor    V0    20
+101   Weapon Slot 0 =   Player's Choice   V1    1
+102   Weapon Slot 0 =   Unarmed   V1    2
+103   Weapon Slot 0 =   AMR   V1    3
+104   Weapon Slot 0 =   Assault Rifle   V1    4
+105   Weapon Slot 0 =   Bolt Rifle    V1    5
+106   Weapon Slot 0 =   BurstRifle    V1    6
+107   Weapon Slot 0 =   ChargeRifle   V1    7
+108   Weapon Slot 0 =   Energy Launcher   V1    8
+109   Weapon Slot 0 =   Energy Rifle    V1    9
+110   Weapon Slot 0 =   Force Rifle   V1    10
+111   Weapon Slot 0 =   Ion Sniper    V1    11
+112   Weapon Slot 0 =   Laser Cannon    V1    12
+113   Weapon Slot 0 =   Plasma Sniper   V1    13
+114   Weapon Slot 0 =   Rail Gun    V1    14
+115   Weapon Slot 0 =   Rocket Launcher   V1    15
+116   Weapon Slot 0 =   Shotgun   V1    16
+117   Weapon Slot 0 =   SMG   V1    17
+118   Weapon Slot 0 =   Sniper Rifle    V1    18
+119   Weapon Slot 0 =   Stinger   V1    19
+120   Weapon Slot 0 =   Suppressor    V1    20
+225   Objective/Goals =   25    V2    25
+224   Objective/Goals =   24    V2    24
+223   Objective/Goals =   23    V2    23
+222   Objective/Goals =   22    V2    22
+221   Objective/Goals =   21    V2    21
+220   Objective/Goals =   20    V2    20
+219   Objective/Goals =   19    V2    19
+218   Objective/Goals =   18    V2    18
+217   Objective/Goals =   17    V2    17
+216   Objective/Goals =   16    V2    16
+215   Objective/Goals =   15    V2    15
+214   Objective/Goals =   14    V2    14
+213   Objective/Goals =   13    V2    13
+212   Objective/Goals =   12    V2    12
+211   Objective/Goals =   11    V2    11
+210   Objective/Goals =   10    V2    10
+209   Objective/Goals =   9   V2    9
+208   Objective/Goals =   8   V2    8
+207   Objective/Goals =   7   V2    7
+206   Objective/Goals =   6   V2    6
+205   Objective/Goals =   5   V2    5
+204   Objective/Goals =   4   V2    4
+203   Objective/Goals =   3   V2    3
+202   Objective/Goals =   2   V2    2
+201   Objective/Goals =   1   V2    1
+200   Objective/Goals =   Unlimited   V2    0
+325   Kills to Win    25    V3    25
+324   Kills to Win    24    V3    24
+323   Kills to Win    23    V3    23
+322   Kills to Win    22    V3    22
+321   Kills to Win    21    V3    21
+320   Kills to Win    20    V3    20
+319   Kills to Win    19    V3    19
+318   Kills to Win    18    V3    18
+317   Kills to Win    17    V3    17
+316   Kills to Win    16    V3    16
+315   Kills to Win    15    V3    15
+314   Kills to Win    14    V3    14
+313   Kills to Win    13    V3    13
+312   Kills to Win    12    V3    12
+311   Kills to Win    11    V3    11
+310   Kills to Win    10    V3    10
+309   Kills to Win    9   V3    9
+308   Kills to Win    8   V3    8
+307   Kills to Win    7   V3    7
+306   Kills to Win    6   V3    6
+305   Kills to Win    5   V3    5
+304   Kills to Win    4   V3    4
+303   Kills to Win    3   V3    3
+302   Kills to Win    2   V3    2
+301   Kills to Win    1   V3    1
+300   Kills to Win    Unlimited   V3    0
+425   Lives   25    V4    25
+424   Lives   24    V4    24
+423   Lives   23    V4    23
+422   Lives   22    V4    22
+421   Lives   21    V4    21
+420   Lives   20    V4    20
+419   Lives   19    V4    19
+418   Lives   18    V4    18
+417   Lives   17    V4    17
+416   Lives   16    V4    16
+415   Lives   15    V4    15
+414   Lives   14    V4    14
+413   Lives   13    V4    13
+412   Lives   12    V4    12
+411   Lives   11    V4    11
+410   Lives   10    V4    10
+409   Lives   9   V4    9
+408   Lives   8   V4    8
+407   Lives   7   V4    7
+406   Lives   6   V4    6
+405   Lives   5   V4    5
+404   Lives   4   V4    4
+403   Lives   3   V4    3
+402   Lives   2   V4    2
+401   Lives   1   V4    1
+400   Lives   Unlimited   V4    0
+501   Game Time   1 Minute    V5    1
+502   Game Time   5 Minutes   V5    2
+503   Game Time   10 Minutes    V5    3
+504   Game Time   15 Minutes    V5    4
+505   Game Time   20 Minutes    V5    5
+506   Game Time   25 Minutes    V5    6
+507   Game Time   30 Minutes    V5    7
+508   Game Time   Unlimited   V5    8
+601   Lighting/Ambience   Outdoor Mode    V6    1
+602   Lighting/Ambience   Indoor Mode   V6    2
+603   Lighting/Ambience   Stealth   V6    3
+701   Teams   Free For All    V7    1
+702   Teams   Two Teams (odds/evens)    V7    2
+703   Teams   Three Teams (every three)   V7    3
+704   Teams   Four Teams (every four)   V7    4
+705   Teams   Player's Choice   V7    5
+801   Game Mode   Death Match   V8    1
+802   Game Mode   Capture the Flag    V8    2
+803   Game Mode   Assault   V8    3
+804   Game Mode   King of the Hill    V8    4
+805   Game Mode   Survival    V8    5
+806   Game Mode   Troule in Terrorist Town    V8    6
+807   Game Mode   You only Live Twice   V8    7
+808   Game Mode   One Shot Kills (pistols)    V8    8
+809   Game Mode   Gun Game    V8    9
+810   Game Mode   Domination    V8    10
+901   Respawn   Immediate (auto)    V9    1
+902   Respawn   15 seconds (auto)   V9    2
+903   Respawn   30 seconds (auto)   V9    3
+904   Respawn   45 seconds  (auto)    V9    4
+905   Respawn   60 seconds (auto)   V9    5
+906   Respawn   90 seconds (auto)   V9    6
+907   Respawn   Ramp 45 (auto)    V9    7
+908   Respawn   Ramp 90 (auto)    V9    8
+909   Respawn   Respawn Station (manual)    V9    9
+1001    Delayed Start   Immediate   V10   1
+1002    Delayed Start   15 seconds    V10   2
+1003    Delayed Start   30 seconds    V10   3
+1004    Delayed Start   45 seconds    V10   4
+1005    Delayed Start   60 seconds    V10   5
+1006    Delayed Start   90 seconds    V10   6
+1007    Delayed Start   5 Minutes   V10   7
+1008    Delayed Start   10 Minutes    V10   8
+1009    Delayed Start   15 Minutes    V10   9
+1101    Special Abilities   item 1    V11   1
+1102    Special Abilities   item 2    V11   2
+1200    Player Gender   Male    V12   0
+1201    Player Gender   Female    V12   1
+1300    Ammo Settings   Unlimited   V13   0
+1301    Ammo Settings   Limited   V13   1
+1400    Friendly Fire   Off   V14   0
+1401    Friendly Fire   On    V14   1
+1500    Reserved    item    V15   0
+1501    Reserved    item    V15   1
+1600    Start Game    unpressed   V16   0
+1601    Start Game    pressed   V16   1  
+ */
+ 
 
 
 //****************************************************************
@@ -59,6 +252,7 @@ char notifyData[100];
 int notifyDataIndex = 0;
 String tokenStrings[100];
 char *ptr = NULL;
+int paired;
 
 // these are variables im using to create settings for the game mode and
 // gun settings
@@ -86,8 +280,6 @@ int MaxTeamLives = 32767; // setting maximum team lives
 long GameTimer = 2000000000; // setting maximum game time
 int PlayerKillCount[64] = {0}; // so its players 0-63 as the player id.
 int TeamKillCount[6] = {0}; // teams 0-6, Red-0, blue-1, yellow-2, green-3, purple-4, cyan-5
-int PlayerLives = 32767; // setting max player lives
-int MaxTeamLives = 32767; // setting maximum team lives
 int DelayStart = 10000; // set delay count down to 30 seconds for start
 bool OutofAmmoA = false; // trigger for auto respawn of ammo weapon slot 0
 bool OutofAmmoB = false; // trigger for auto respawn of ammo weapon slot 1
@@ -424,69 +616,6 @@ void taggedoutmode() {
   RESPAWN = false;
 }
 
-// this is a temporary enabling function for the gun to put it in a mode
-// that we can recieve IR via built in sensors then interpret them for 
-// game mode setting configuration... basically using gun as input device only
-// for esp for a period of time
-void getsettings() {
-  sendString("$START,*");
-  sendString("$GSET,1,0,1,0,1,0,50,1,*");
-  sendString("$PSET,54,5,45,70,70,50,,H44,JAD,V33,V3I,V3C,V3G,V3E,V37,H06,H55,H13,H21,H02,U15,W71,A10,*");
-  //sendString("$WEAP,0,,100,0,1,9,0,,,,,,,,100,850,36,144,1700,0,9,100,100,250,0,,,R23,D20,D19,,D23,D22,D21,D18,,,,,36,72,75,*");
-  //sendString("$WEAP,1,2,100,0,0,45,0,,,,,,70,80,900,850,6,24,400,2,7,100,100,,0,,,T01,,,,D01,D28,D27,D18,,,,,6,12,75,30,*");
-  //sendString("$WEAP,4,1,90,13,1,90,0,,,,,,,,1000,100,1,0,0,10,13,100,100,,0,0,,M92,,,,,,,,,,,,1,0,20,*");
-  sendString("$VOL,75,0,*"); // sets max volume on gun 0-100 feet distance
-  sendString("$SIR,0,0,,1,0,0,1,,*");
-  sendString("$SIR,0,1,,36,0,0,1,,*");
-  sendString("$SIR,0,3,,37,0,0,1,,*");
-  sendString("$SIR,8,0,,38,0,0,1,,*");
-  sendString("$SIR,9,3,,24,10,0,,,*");
-  sendString("$SIR,10,0,X13,1,0,100,2,60,*");
-  sendString("$SIR,6,0,H02,1,0,90,1,40,*");
-  sendString("$SIR,13,1,H57,1,0,0,1,,*");
-  sendString("$SIR,13,0,H50,1,0,0,1,,*");
-  sendString("$SIR,13,3,H49,1,0,100,0,60,*");
-  sendString("$BMAP,0,0,,,,,*"); // button mapping
-  sendString("$BMAP,1,100,0,1,99,99,*"); // button mapping
-  sendString("$BMAP,2,97,,,,,*"); // button maping
-  sendString("$BMAP,3,98,,,,,*"); // button mapping
-  sendString("$BMAP,4,98,,,,,*"); // button mapping
-  sendString("$BMAP,5,98,,,,,*"); // button mapping
-  sendString("$BMAP,8,4,,,,,*"); // button mapping
-  sendString("$PLAYX,0,*");
-  sendString("$PLAY,SW04,4,6,,,,,*"); // plays starwars music
-  sendString("$SPAWN,,*");
-  //WEAP = true;
-  sendString("$WEAP,0,*"); // cleared out weapon 0
-  sendString("$WEAP,1,*"); // cleared out weapon 1
-  sendString("$WEAP,4,*"); // cleared out melee weapon
-  //sendString("$WEAP,0,,100,0,1,9,0,,,,,,,,100,850,36,144,1700,0,9,100,100,250,0,,,R23,D20,D19,,D23,D22,D21,D18,,,,,36,72,75,*");
-  //sendString("$WEAP,1,2,100,0,0,45,0,,,,,,70,80,900,850,6,24,400,2,7,100,100,,0,,,T01,,,,D01,D28,D27,D18,,,,,6,12,75,30,*");
-  //sendString("$WEAP,4,1,90,13,1,90,0,,,,,,,,1000,100,1,0,0,10,13,100,100,,0,0,,M92,,,,,,,,,,,,1,0,20,*");
-  //sendString("$HLOOP,0,0,*"); // not sure what this does
-  sendString("$GLED,,,,5,,,*"); // changes headset to tagged out color
-  //sendString("$WEAP,0,*"); // cleared out weapon 0
-  //sendString("$WEAP,1,*"); // cleared out weapon 1
-  //sendString("$WEAP,4,*"); // cleared out melee weapon
-  //sendString("$WEAP,0,,100,0,1,9,0,,,,,,,,100,850,36,144,1700,0,9,100,100,250,0,,,R23,D20,D19,,D23,D22,D21,D18,,,,,36,72,75,*");
-  //sendString("$WEAP,1,2,100,0,0,45,0,,,,,,70,80,900,850,6,24,400,2,7,100,100,,0,,,T01,,,,D01,D28,D27,D18,,,,,6,12,75,30,*");
-  //sendString("$WEAP,4,1,90,13,1,90,0,,,,,,,,1000,100,1,0,0,10,13,100,100,,0,0,,M92,,,,,,,,,,,,1,0,20,*");
-  //sendString("$PLAYX,0,*");
-  //sendString("$PLAY,VA81,4,6,,,,,*");
-  //sendString("$SPAWN,,*"); // respawns player back in game
-  //Serial.println("Player Respawned");
-  //RESPAWN = false;
-  settingsallowed=1;
-}
-// used to terminate the input mode just above
-void exitgetsettings() {
-  sendString("$GLED,,,,5,,,*"); // changes headset to tagged out color
-  delay(3000);
-  sendString("STOP,*"); // stops everything going on
-  sendString("CLEAR,*"); // clears out anything stored for game settings in gun, not esp
-  settingsallowed=5; // sets trigger for next programing step
-  Serial.println("successfully exited get settings gun state");
-}
 // loads all the game configuration settings into the gun
 void gameconfigurator() {
   Serial.println("Running Game Configurator based upon recieved inputs");
@@ -518,51 +647,42 @@ void gameconfigurator() {
   Serial.println("Finished Game Configuration set up");
 }
 
-// this starts a game... automatic now but can be triggered by an IR
+// this starts a game
 void delaystart() {
   Serial.println("Starting Delayed Game Start");
   sendString("$VOL,100,0,*"); // sets max volume on gun 0-100 feet distance
   sendString("$PLAY,VA84,4,5,,,,,*"); // plays a ten second countdown
-  delay(DelayStart); // delays ten seconds
+  delay(DelayStart); // delays ten seconds or as configured
   // sendString("$PLAY,VA81,4,6,,,,,*"); // plays the .. nevermind
   sendString("$SPAWN,,*");
-  settingsallowed=7; // finally were done!
   Serial.println("Delayed Start Complete, should be in game play mode now");
-}
-
-// not called out in program currently just a good use for troubleshooting
-void samplesendsettings() {
-  sendString("$START,*");
-  sendString("$GSET,1,0,1,0,1,0,50,1,*");
-  sendString("$PSET,54,5,45,70,70,50,,H44,JAD,V33,V3I,V3C,V3G,V3E,V37,H06,H55,H13,H21,H02,U15,W71,A10,*");
-  sendString("$WEAP,0,,100,0,1,9,0,,,,,,,,100,850,36,144,1700,0,9,100,100,250,0,,,R23,D20,D19,,D23,D22,D21,D18,,,,,36,72,75,*");
-  sendString("$WEAP,1,2,100,0,0,45,0,,,,,,70,80,900,850,6,24,400,2,7,100,100,,0,,,T01,,,,D01,D28,D27,D18,,,,,6,12,75,30,*");
-  sendString("$WEAP,4,1,90,13,1,90,0,,,,,,,,1000,100,1,0,0,10,13,100,100,,0,0,,M92,,,,,,,,,,,,1,0,20,*");
-  sendString("$SIR,0,0,,1,0,0,1,,*");
-  sendString("$SIR,0,1,,36,0,0,1,,*");
-  sendString("$SIR,0,3,,37,0,0,1,,*");
-  sendString("$SIR,8,0,,38,0,0,1,,*");
-  sendString("$SIR,9,3,,24,10,0,,,*");
-  sendString("$SIR,10,0,X13,1,0,100,2,60,*");
-  sendString("$SIR,6,0,H02,1,0,90,1,40,*");
-  sendString("$SIR,13,1,H57,1,0,0,1,,*");
-  sendString("$SIR,13,0,H50,1,0,0,1,,*");
-  sendString("$SIR,13,3,H49,1,0,100,0,60,*");
-  sendString("$BMAP,0,0,,,,,*");
-  sendString("$BMAP,1,100,0,1,99,99,*");
-  sendString("$BMAP,2,97,,,,,*");
-  sendString("$BMAP,3,98,,,,,*");
-  sendString("$BMAP,4,98,,,,,*");
-  sendString("$BMAP,5,98,,,,,*");
-  sendString("$BMAP,8,4,,,,,*");
-  //sendString("$PLAYX,0,*");
-  //sendString("$PLAY,VA81,4,6,,,,,*");
-  sendString("$SPAWN,,*");
-  WEAP = true;
 }
 
 // function called for to get the first burst of ir protocol settings
 void roundonesettings() {
+  SetSlotB=lastTaggedPlayer; // weapon slot 1 designated by player id
+  SetKillCnt=lastTaggedTeam; // kill count set by team id
+  SetLives=tokenStrings[2].toInt(); // lives set by bullet type
+  SetObjct=tokenStrings[5].toInt(); // objectives set by damage type
+  SetRSPNMode=tokenStrings[6].toInt(); // respawn mode determined by is critical
+  SetFF=tokenStrings[7].toInt(); // friendly fire enabled by power indicator
+  Serial.println("Round 2 settings loaded!");
+  Serial.print("Weapon Slot 1 set to: ");
+  Serial.println(SetSlotB);
+  Serial.print("Set kill count limit to: ");
+  Serial.println(SetKillCnt);
+  Serial.print("Set max lives to: ");
+  Serial.println(SetLives);
+  Serial.print("Set game objectives to: ");
+  Serial.println(SetObjct);
+  Serial.print("Set Respawn mode to: ");
+  Serial.println(SetRSPNMode);
+  Serial.print("Set friendly fire to: ");
+  Serial.println(SetFF);
+  gametimesettings();
+  gamelivessettings();
+  killcountsettings();
+  objectivesettings();
   SetSlotA=lastTaggedPlayer; // using the player id for weapon slot 0
   SetTeam=lastTaggedTeam; // using team id for team id
   SetTime=tokenStrings[2].toInt(); // using bullet type protocol for in game timer
@@ -573,7 +693,6 @@ void roundonesettings() {
   if(AmmoGndr == 1) {SetGNDR=1; SetAmmo=0;}
   if(AmmoGndr == 2) {SetGNDR=0; SetAmmo=1;}
   if(AmmoGndr == 3) {SetGNDR=1; SetAmmo=1;}
-  settingsallowed=2; // ready for next ir shot!
   tokenStrings[0] = "null";
   Serial.println("Round 1 settings loaded!"); // just said that!
   Serial.print("Weapon slot 0 set to: ");
@@ -589,43 +708,6 @@ void roundonesettings() {
   Serial.print("Ammo reload setting set to: ");
   Serial.println(SetAmmo);
   Serial.println("awaiting second ir programing tag");
-}
-
-// runs to verify if special ir recieved matches to do a game start
-void gamestartcheck() {
-        int startcheck = tokenStrings[5].toInt();
-        if (lastTaggedPlayer > 60 && startcheck > 100) {
-        settingsallowed=4; // next step please
-        Serial.println("Weapon Start IR Recieved");
-        }
-}
-
-void roundtwosettings() {
-        SetSlotB=lastTaggedPlayer; // weapon slot 1 designated by player id
-        SetKillCnt=lastTaggedTeam; // kill count set by team id
-        SetLives=tokenStrings[2].toInt(); // lives set by bullet type
-        SetObjct=tokenStrings[5].toInt(); // objectives set by damage type
-        SetRSPNMode=tokenStrings[6].toInt(); // respawn mode determined by is critical
-        SetFF=tokenStrings[7].toInt(); // friendly fire enabled by power indicator
-        settingsallowed=3; // next step please
-        Serial.println("Round 2 settings loaded!");
-        Serial.print("Weapon Slot 1 set to: ");
-        Serial.println(SetSlotB);
-        Serial.print("Set kill count limit to: ");
-        Serial.println(SetKillCnt);
-        Serial.print("Set max lives to: ");
-        Serial.println(SetLives);
-        Serial.print("Set game objectives to: ");
-        Serial.println(SetObjct);
-        Serial.print("Set Respawn mode to: ");
-        Serial.println(SetRSPNMode);
-        Serial.print("Set friendly fire to: ");
-        Serial.println(SetFF);
-        gametimesettings();
-        gamelivessettings();
-        killcountsettings();
-        objectivesettings();
-        
 }
 
 // process used to send string properly to gun... splits up longer strings in bytes of 20
@@ -858,35 +940,6 @@ void loop() {
     // Set the characteristic's value to be the array of bytes that is actually a string.
     //pRemoteCharacteristic->writeValue(newValue.c_str(), newValue.length());
     //pRemoteCharacteristic->writeValue((uint8_t*)newValue.c_str(), newValue.length(),true);
-    if (WEAP == false) {
-      sendString("$START,*");
-      sendString("$GSET,1,0,1,0,1,0,50,1,*");
-      sendString("$PSET,54,5,45,70,70,50,,H44,JAD,V33,V3I,V3C,V3G,V3E,V37,H06,H55,H13,H21,H02,U15,W71,A10,*");
-      sendString("$WEAP,0,,100,0,1,9,0,,,,,,,,100,850,36,144,1700,0,9,100,100,250,0,,,R23,D20,D19,,D23,D22,D21,D18,,,,,36,72,75,*");
-      sendString("$WEAP,1,2,100,0,0,45,0,,,,,,70,80,900,850,6,24,400,2,7,100,100,,0,,,T01,,,,D01,D28,D27,D18,,,,,6,12,75,30,*");
-      sendString("$WEAP,4,1,90,13,1,90,0,,,,,,,,1000,100,1,0,0,10,13,100,100,,0,0,,M92,,,,,,,,,,,,1,0,20,*");
-      sendString("$SIR,0,0,,1,0,0,1,,*");
-      sendString("$SIR,0,1,,36,0,0,1,,*");
-      sendString("$SIR,0,3,,37,0,0,1,,*");
-      sendString("$SIR,8,0,,38,0,0,1,,*");
-      sendString("$SIR,9,3,,24,10,0,,,*");
-      sendString("$SIR,10,0,X13,1,0,100,2,60,*");
-      sendString("$SIR,6,0,H02,1,0,90,1,40,*");
-      sendString("$SIR,13,1,H57,1,0,0,1,,*");
-      sendString("$SIR,13,0,H50,1,0,0,1,,*");
-      sendString("$SIR,13,3,H49,1,0,100,0,60,*");
-      sendString("$BMAP,0,0,,,,,*");
-      sendString("$BMAP,1,100,0,1,99,99,*");
-      sendString("$BMAP,2,97,,,,,*");
-      sendString("$BMAP,3,98,,,,,*");
-      sendString("$BMAP,4,98,,,,,*");
-      sendString("$BMAP,5,98,,,,,*");
-      sendString("$BMAP,8,4,,,,,*");
-      //sendString("$PLAYX,0,*");
-      //sendString("$PLAY,VA81,4,6,,,,,*");
-      sendString("$SPAWN,,*");
-      WEAP = true;
-    }
     if (RESPAWN) {
       respawnplayer();
     }
