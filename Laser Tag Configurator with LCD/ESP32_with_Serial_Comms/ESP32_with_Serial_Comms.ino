@@ -554,7 +554,9 @@ class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
     } // onResult
 }; // MyAdvertisedDeviceCallbacks
 
-
+//******************************************************************************************
+// serial communications that is pinned to second core in set up
+// this is where we write to variable to configure settings to send over BLE to tagger
 void serialTask(void * params){
   for(;;){
     
@@ -616,6 +618,8 @@ void taggedoutmode() {
   RESPAWN = false;
 }
 
+//******************************************************************************************
+
 // loads all the game configuration settings into the gun
 void gameconfigurator() {
   Serial.println("Running Game Configurator based upon recieved inputs");
@@ -647,6 +651,8 @@ void gameconfigurator() {
   Serial.println("Finished Game Configuration set up");
 }
 
+//******************************************************************************************
+
 // this starts a game
 void delaystart() {
   Serial.println("Starting Delayed Game Start");
@@ -657,6 +663,8 @@ void delaystart() {
   sendString("$SPAWN,,*");
   Serial.println("Delayed Start Complete, should be in game play mode now");
 }
+
+//******************************************************************************************
 
 // function called for to get the first burst of ir protocol settings
 void roundonesettings() {
@@ -710,6 +718,8 @@ void roundonesettings() {
   Serial.println("awaiting second ir programing tag");
 }
 
+//******************************************************************************************
+
 // process used to send string properly to gun... splits up longer strings in bytes of 20
 // to make sure gun understands them all... not sure about all of what does what below...
 // had some major help from Sri Lanka Guy!
@@ -737,6 +747,8 @@ void sendString(String value) {
   }
 }
 
+//******************************************************************************************
+
 void gametimesettings() {
   /* ideally we want setting options for minutes: 1,3,5,10,20,30,60, unlimited
    *  we will be using the bullet type ir or blynk for setting the time limits
@@ -751,6 +763,9 @@ void gametimesettings() {
    if (SetTime > 6) {GameTimer=2000000000;} // set to unlimited minutes
   Serial.println("Timer set to " + String(GameTimer) + " milliseconds"); 
 }
+
+//******************************************************************************************
+
 void gamelivessettings() {
   /* ideally we want setting options for minutes: 1,3,5,10,20,30,60, unlimited
    *  we will be using the bullet type ir or blynk for setting the time limits
@@ -764,7 +779,11 @@ void gamelivessettings() {
    if (SetLives = 6) {PlayerLives=60;} // lives set to 60 
    if (SetLives > 6) {PlayerLives=32000;} // set to unlimited 
    Serial.println("Lives set to " + String(PlayerLives) + " max lives"); 
+
 }
+
+//******************************************************************************************
+
 void killcountsettings() {
   /* ideally we want setting options for max kills: 10,20,50, unlimited
    *  we will be using the team type ir or blynk for setting the time limits
@@ -775,6 +794,9 @@ void killcountsettings() {
    if (SetKillCnt = 3) {MaxKills=32000;} // max kills set to unlimited
    Serial.println("Kill limit set to " + String(MaxKills) + " total kills"); 
 }
+
+//******************************************************************************************
+
 void objectivesettings() {
   /* ideally we want setting options for objectives: 10,20,50, unlimited
    *  we will be using the team type ir or blynk for setting the time limits
@@ -787,12 +809,17 @@ void objectivesettings() {
    Serial.println("Objective limit set to " + String(Objectives) + " max points"); 
 }
 
+//******************************************************************************************
+
 // sets and sends player settings to gun based upon configuration settings
 void playersettings() {
   if(SetGNDR == 0) {sendString("$PSET,"+String(GunID)+","+String(SetTeam)+",45,70,70,50,,H44,JAD,V33,V3I,V3C,V3G,V3E,V37,H06,H55,H13,H21,H02,U15,W71,A10,*");}
   else {sendString("$PSET,"+String(GunID)+","+String(SetTeam)+",45,70,70,50,,H44,JAD,VB3,VBI,VBC,VBG,VBE,VB7,H06,H55,H13,H21,H02,U15,W71,A10,*");}
   
 }
+
+//******************************************************************************************
+
 // sets and sends gun type to slot 0 based upon stored settings
 void weaponsettingsA() {
   if(SetSlotA == 1) {Serial.println("Weapon 0 set to Unarmed"); sendString("$WEAP,0,*");} // cleared out weapon 0
@@ -815,6 +842,9 @@ void weaponsettingsA() {
   if(SetSlotA == 18) {Serial.println("Weapon 0 set to Stinger"); sendString("$WEAP,0,,100,0,0,15,0,,,,,,,,120,850,18,72,1700,0,0,100,100,,0,,,E11,,,,D17,D16,D15,A73,,,,,18,36,75,,*");}
   if(SetSlotA == 19) {Serial.println("Weapon 0 set to Suppressor"); sendString("$WEAP,0,,100,0,0,8,0,,,,,,,,75,850,48,288,2000,0,0,100,100,,0,2,50,Q06,,,,D26,D25,D24,D18,,,,,48,144,75,,*");}
 }
+
+//******************************************************************************************
+
 // sets and sends gun for slot 0 based upon stored settings
 void weaponsettingsB() {
   if(SetSlotB == 1) {Serial.println("Weapon 1 set to Unarmed"); sendString("$WEAP,1,*");} // cleared out weapon 1
@@ -837,6 +867,9 @@ void weaponsettingsB() {
   if(SetSlotB == 18) {Serial.println("Weapon 1 set to Stinger"); sendString("$WEAP,0,,100,0,0,15,0,,,,,,,,120,850,18,72,1700,0,0,100,100,,0,,,E11,,,,D17,D16,D15,A73,,,,,18,36,75,,*");}
   if(SetSlotB == 19) {Serial.println("Weapon 1 set to Suppressor"); sendString("$WEAP,0,,100,0,0,8,0,,,,,,,,75,850,48,288,2000,0,0,100,100,,0,2,50,Q06,,,,D26,D25,D24,D18,,,,,48,144,75,,*");} 
 }
+
+//******************************************************************************************
+
 // sets and sends game settings based upon the stored settings
 void SetFFOutdoor() {
   if(SetODMode == 0 && SetFF == 1) {sendString("$GSET,1,0,1,0,1,0,50,1,*");}
@@ -844,6 +877,9 @@ void SetFFOutdoor() {
   if(SetODMode == 1 && SetFF == 0) {sendString("$GSET,0,1,1,0,1,0,50,1,*");}
   if(SetODMode == 0 && SetFF == 0) {sendString("$GSET,0,0,1,0,1,0,50,1,*");}
 }
+
+//******************************************************************************************
+
 // ends game... thats all
 void gameover() {
   sendString("STOP,*"); // stops everything going on
@@ -852,6 +888,9 @@ void gameover() {
   GAMEOVER = false;
   settingsallowed=0;
 }
+
+//******************************************************************************************
+
 // as the name says... respawn a player!
 void respawnplayer() {
   Serial.println("Respawning Player");
@@ -881,13 +920,14 @@ void respawnplayer() {
   RESPAWN = false;
 }
 
-
-
+//******************************************************************************************
+//******************************************************************************************
+//******************************************************************************************
 
 void setup() {
   Serial.begin(115200);
   Serial.println("Starting Arduino BLE Client application...");
-  SerialLCD.begin(9600,SERIAL_8N1, 16, 17);
+  SerialLCD.begin(9600,SERIAL_8N1, 16, 17); // setting up serial communication with ESP8266 on pins 16/17 w baud rate of 9600
   delay(5000);
   BLEDevice::init("");
 
@@ -905,7 +945,7 @@ void setup() {
   pClient  = BLEDevice::createClient();
   pClient->setClientCallbacks(new MyClientCallback());
 
-  xTaskCreatePinnedToCore(
+  xTaskCreatePinnedToCore( // pins the serial task loop to the second core
     serialTask,
     "SerialLoop",
     8000,
@@ -916,11 +956,16 @@ void setup() {
 
 } // End of setup.
 
-
+//******************************************************************************************
+//******************************************************************************************
+//******************************************************************************************
 
 // This is the Arduino main loop function.
 void loop() {
+  // the main loop for BLE activity is here, it is devided in three sections....
+  // sections are for when connected, when not connected and to connect again
 
+  //***********************************************************************************
   // If the flag "doConnect" is true then we have scanned for and found the desired
   // BLE Server with which we wish to connect.  Now we connect to it.  Once we are
   // connected we set the connected flag to be true.
@@ -931,22 +976,25 @@ void loop() {
     } else {
       Serial.println("We have failed to connect to the server; there is nothin more we will do.");
     }
-    
   }
-
+  //*************************************************************************************
   // If we are connected to a peer BLE Server, update the characteristic each time we are reached
   // with the current time since boot.
   if (connected) {
     // Set the characteristic's value to be the array of bytes that is actually a string.
     //pRemoteCharacteristic->writeValue(newValue.c_str(), newValue.length());
     //pRemoteCharacteristic->writeValue((uint8_t*)newValue.c_str(), newValue.length(),true);
-    if (RESPAWN) {
-      respawnplayer();
+    
+    // here we put in processes to run based upon conditions to make a game function
+    if (RESPAWN) { // checks if respawn was triggered to respawn a player
+      respawnplayer(); // respawns player
     }
-    if (GAMEOVER) {
-      gameover();
+    if (GAMEOVER) { // checks if something triggered game over (out of lives, objective met)
+      gameover(); // runs object to kick player out of game
     }
-  } else if (doScan) {
+  }
+  //************************************************************************************
+  else if (doScan) {
     if (millis() - startScan > 11000) {
       Serial.println("Scanning again");
       BLEDevice::init("");
@@ -954,6 +1002,4 @@ void loop() {
       startScan = millis();
     }
   }
-
-  delay(1000); // Delay a second between loops.
 } // End of loop
