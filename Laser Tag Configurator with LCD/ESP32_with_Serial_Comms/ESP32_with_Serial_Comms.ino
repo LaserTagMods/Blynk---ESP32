@@ -3,6 +3,7 @@
  * update 4/3/2020 Cleaned up for more compatibility to serial comms programing
  * update 4/3/2020 Was able to plug in set setting from serial for friendly fire and outdoor/indoor mode
  * update 4/4/2020 was able to get team settings and manual input team settings working as well as gender settings
+ * updated 4/4/2020 included weapon selection assignment and notification to select in game settings manual options
  *
  * Written by Jay "the man" Burden
  *
@@ -258,8 +259,8 @@ char *ptr = NULL;
 // these are variables im using to create settings for the game mode and
 // gun settings
 int settingsallowed = 0; // trigger variable used to walk through steps for configuring gun(s)
-int SetSlotA; // this is for weapon slot 0
-int SetSlotB; // this is for weapon slot 1
+int SetSlotA=2; // this is for weapon slot 0
+int SetSlotB=1; // this is for weapon slot 1
 int SetSlotC; // this is for weapon slot 4 or melee used in pickups only (future)
 int SetTeam=0; // used to configure team player settings, default is 0
 int SetTime; // used for in game timer functions on esp32 (future
@@ -300,7 +301,7 @@ bool RESPAWN = false; // trigger to enable auto respawn when killed in game
 bool GAMEOVER = false; // used to trigger game over and boot a gun out of play mode
 bool TAGGERUPDATE = false; // used to trigger sending data to ESP8266
 bool AUDIO = false; // used to trigger an audio on tagger
-bool paired = false; // used as a trigger to notify that tagger and esp paired properly
+bool PAIRED = false; // used as a trigger to notify that tagger and esp paired properly
 
 long startScan = 0; // part of BLE enabling
 
@@ -346,7 +347,7 @@ static void notifyCallback(
     // first signal we get from gun is this one and it tells the esp
     // that gun is happy with the connection
     if (tokenStrings[0] == "$#CONNECT") {
-      paired=true;
+      PAIRED=true;
     }
     // this analyzes every single time a trigger is pulled
     // or a button is pressed or reload handle pulled. pretty cool
@@ -397,6 +398,7 @@ static void notifyCallback(
         space 6 is "is critical" if critical a damage multiplier would apply, rare.
         space 7 is "power", not sure what that does.*/
       //been tagged
+      TAGGERUPDATE=true;
       lastTaggedPlayer = tokenStrings[3].toInt();
       lastTaggedTeam = tokenStrings[4].toInt();
       Serial.println("Just tagged by: " + String(lastTaggedPlayer) + " on team: " + String(lastTaggedTeam));
@@ -437,7 +439,7 @@ static void notifyCallback(
       /*health status update occured
        * can be used for updates on health as well as death occurance
        */
-       TAGGERUPDATE=true;
+      TAGGERUPDATE=true;
       health = tokenStrings[1].toInt();
       armor = tokenStrings[2].toInt();
       shield = tokenStrings[3].toInt();
@@ -578,7 +580,7 @@ class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
 void notifyconnection() {
   sendString("$PLAY,VA20,3,9,,,,,*");
   Serial.println("sending connection notification");
-  paired=false;
+  PAIRED=false;
 }
 //******************************************************************************************
 // disclaimer... incomplete... 
@@ -929,6 +931,7 @@ void respawnplayer() {
 // this object is activated if a manual input is needed for gun settings
 // exitsettings object needs to be ran to leave this mode
 void getsettings() {
+  sendString("$PLAY,"+AudioSelection+",4,6,,,,,*");
   sendString("$START,*");
   sendString("$GSET,1,0,1,0,1,0,50,1,*");
   sendString("$PSET,64,5,200,200,200,,,,,,,,,,,,,,,,,,,*");
@@ -992,6 +995,48 @@ void serialTask(void * params){
       // What we need to do here is analyze the serial data from ESP8266 and do something with it
       // So we set a programing variable, print the change to serial, and make the tagger confirm via audio
 
+      if(readtxt.toInt()==2) {SetSlotA=1; Serial.println("Weapon Slot 0 set to Unarmed"); AudioSelection="VA19";}
+      if(readtxt.toInt()==3) {SetSlotA=2; Serial.println("Weapon Slot 0 set to AMR"); AudioSelection="VA19";}
+      if(readtxt.toInt()==4) {SetSlotA=3; Serial.println("Weapon Slot 0 set to Assault Rifle"); AudioSelection="VA19";}
+      if(readtxt.toInt()==5) {SetSlotA=4; Serial.println("Weapon Slot 0 set to Bolt Rifle"); AudioSelection="VA19";}
+      if(readtxt.toInt()==6) {SetSlotA=5; Serial.println("Weapon Slot 0 set to BurstRifle"); AudioSelection="VA19";}
+      if(readtxt.toInt()==7) {SetSlotA=6; Serial.println("Weapon Slot 0 set to ChargeRifle"); AudioSelection="VA19";}
+      if(readtxt.toInt()==8) {SetSlotA=7; Serial.println("Weapon Slot 0 set to Energy Launcher"); AudioSelection="VA19";}
+      if(readtxt.toInt()==9) {SetSlotA=8; Serial.println("Weapon Slot 0 set to Energy Rifle"); AudioSelection="VA19";}
+      if(readtxt.toInt()==10) {SetSlotA=9; Serial.println("Weapon Slot 0 set to Force Rifle"); AudioSelection="VA19";}
+      if(readtxt.toInt()==11) {SetSlotA=10; Serial.println("Weapon Slot 0 set to Ion Sniper"); AudioSelection="VA19";}
+      if(readtxt.toInt()==12) {SetSlotA=11; Serial.println("Weapon Slot 0 set to Laser Cannon"); AudioSelection="VA19";}
+      if(readtxt.toInt()==13) {SetSlotA=12; Serial.println("Weapon Slot 0 set to Plasma Sniper"); AudioSelection="VA19";}
+      if(readtxt.toInt()==14) {SetSlotA=13; Serial.println("Weapon Slot 0 set to Rail Gun"); AudioSelection="VA19";}
+      if(readtxt.toInt()==15) {SetSlotA=14; Serial.println("Weapon Slot 0 set to Rocket Launcher"); AudioSelection="VA19";}
+      if(readtxt.toInt()==16) {SetSlotA=15; Serial.println("Weapon Slot 0 set to Shotgun"); AudioSelection="VA19";}
+      if(readtxt.toInt()==17) {SetSlotA=16; Serial.println("Weapon Slot 0 set to SMG"); AudioSelection="VA19";}
+      if(readtxt.toInt()==18) {SetSlotA=17; Serial.println("Weapon Slot 0 set to Sniper Rifle"); AudioSelection="VA19";}
+      if(readtxt.toInt()==19) {SetSlotA=18; Serial.println("Weapon Slot 0 set to Stinger"); AudioSelection="VA19";}
+      if(readtxt.toInt()==20) {SetSlotA=19; Serial.println("Weapon Slot 0 set to Suppressor"); AudioSelection="VA19";}
+      if(readtxt.toInt()==102) {SetSlotB=1; Serial.println("Weapon Slot 1 set to Unarmed"); AudioSelection="VA19";}
+      if(readtxt.toInt()==103) {SetSlotB=2; Serial.println("Weapon Slot 1 set to AMR"); AudioSelection="VA19";}
+      if(readtxt.toInt()==104) {SetSlotB=3; Serial.println("Weapon Slot 1 set to Assault Rifle"); AudioSelection="VA19";}
+      if(readtxt.toInt()==105) {SetSlotB=4; Serial.println("Weapon Slot 1 set to Bolt Rifle"); AudioSelection="VA19";}
+      if(readtxt.toInt()==106) {SetSlotB=5; Serial.println("Weapon Slot 1 set to BurstRifle"); AudioSelection="VA19";}
+      if(readtxt.toInt()==107) {SetSlotB=6; Serial.println("Weapon Slot 1 set to ChargeRifle"); AudioSelection="VA19";}
+      if(readtxt.toInt()==108) {SetSlotB=7; Serial.println("Weapon Slot 1 set to Energy Launcher"); AudioSelection="VA19";}
+      if(readtxt.toInt()==109) {SetSlotB=8; Serial.println("Weapon Slot 1 set to Energy Rifle"); AudioSelection="VA19";}
+      if(readtxt.toInt()==110) {SetSlotB=9; Serial.println("Weapon Slot 1 set to Force Rifle"); AudioSelection="VA19";}
+      if(readtxt.toInt()==111) {SetSlotB=10; Serial.println("Weapon Slot 1 set to Ion Sniper"); AudioSelection="VA19";}
+      if(readtxt.toInt()==112) {SetSlotB=11; Serial.println("Weapon Slot 1 set to Laser Cannon"); AudioSelection="VA19";}
+      if(readtxt.toInt()==113) {SetSlotB=12; Serial.println("Weapon Slot 1 set to Plasma Sniper"); AudioSelection="VA19";}
+      if(readtxt.toInt()==114) {SetSlotB=13; Serial.println("Weapon Slot 1 set to Rail Gun"); AudioSelection="VA19";}
+      if(readtxt.toInt()==115) {SetSlotB=14; Serial.println("Weapon Slot 1 set to Rocket Launcher"); AudioSelection="VA19";}
+      if(readtxt.toInt()==116) {SetSlotB=15; Serial.println("Weapon Slot 1 set to Shotgun"); AudioSelection="VA19";}
+      if(readtxt.toInt()==117) {SetSlotB=16; Serial.println("Weapon Slot 1 set to SMG"); AudioSelection="VA19";}
+      if(readtxt.toInt()==118) {SetSlotB=17; Serial.println("Weapon Slot 1 set to Sniper Rifle"); AudioSelection="VA19";}
+      if(readtxt.toInt()==119) {SetSlotB=18; Serial.println("Weapon Slot 1 set to Stinger"); AudioSelection="VA19";}
+      if(readtxt.toInt()==120) {SetSlotB=19; Serial.println("Weapon Slot 1 set to Suppressor"); AudioSelection="VA19";}
+
+
+
+      
       if(readtxt.toInt()==601) {SetODMode=0; Serial.println("Outdoor Mode On"); AudioSelection="VA4W";}
       if(readtxt.toInt()==602) {SetODMode=1; Serial.println("Indoor Mode On"); AudioSelection="VA3W";}
       if(readtxt.toInt()==603) {SetODMode=1; Serial.println("Stealth Mode On"); AudioSelection="VA60";}
@@ -1005,8 +1050,8 @@ void serialTask(void * params){
       
       if(readtxt.toInt()==1401) {SetFF=1; Serial.println("Friendly Fire On"); AudioSelection="VA32";}
       if(readtxt.toInt()==1400) {SetFF=0; Serial.println("Friendly Fire Off"); AudioSelection="VA31";}
-
-      if(1600 > readtxt.toInt() && readtxt.toInt() > 0) {AUDIO=true;} // sets trigger for other core BLE core to play an audio sound
+      // enable audio notification for changes
+      if(1600 > readtxt.toInt() && readtxt.toInt() > 0) {AUDIO=true;}
     }
   }
 }
@@ -1083,7 +1128,7 @@ void loop() {
     
     // here we put in processes to run based upon conditions to make a game function
 
-    if (paired) {notifyconnection();}
+    if (PAIRED) {notifyconnection();}
     if (settingsallowed==1) {getsettings();} // this is triggered if a manual option is required for game settings
     if (settingsallowed==99) {exitgetsettings();} // this ends get settings mode
     if (RESPAWN) { // checks if respawn was triggered to respawn a player
