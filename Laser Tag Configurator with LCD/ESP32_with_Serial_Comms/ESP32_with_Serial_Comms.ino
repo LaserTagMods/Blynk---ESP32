@@ -180,11 +180,11 @@ Format below: (ToESP32 value)(Setting)(Selection) (Virtual Pin) (Pin Value)
 902   Respawn   15 seconds (auto)   V9    2
 903   Respawn   30 seconds (auto)   V9    3
 904   Respawn   45 seconds  (auto)    V9    4
-905   Respawn   60 seconds (auto)   V9    5
-906   Respawn   90 seconds (auto)   V9    6
-907   Respawn   Ramp 45 (auto)    V9    7
-908   Respawn   Ramp 90 (auto)    V9    8
-909   Respawn   Respawn Station (manual)    V9    9
+ 905   Respawn   60 seconds (auto)   V9    5
+ 906   Respawn   90 seconds (auto)   V9    6
+ 907   Respawn   Ramp 45 (auto)    V9    7
+ 908   Respawn   Ramp 90 (auto)    V9    8
+ 909   Respawn   Respawn Station (manual)    V9    9
 1001    Delayed Start   Immediate   V10   1
 1002    Delayed Start   15 seconds    V10   2
 1003    Delayed Start   30 seconds    V10   3
@@ -254,7 +254,6 @@ char notifyData[100];
 int notifyDataIndex = 0;
 String tokenStrings[100];
 char *ptr = NULL;
-int paired;
 
 // these are variables im using to create settings for the game mode and
 // gun settings
@@ -301,6 +300,7 @@ bool RESPAWN = false; // trigger to enable auto respawn when killed in game
 bool GAMEOVER = false; // used to trigger game over and boot a gun out of play mode
 bool TAGGERUPDATE = false; // used to trigger sending data to ESP8266
 bool AUDIO = false; // used to trigger an audio on tagger
+bool paired = false; // used as a trigger to notify that tagger and esp paired properly
 
 long startScan = 0; // part of BLE enabling
 
@@ -346,7 +346,7 @@ static void notifyCallback(
     // first signal we get from gun is this one and it tells the esp
     // that gun is happy with the connection
     if (tokenStrings[0] == "$#CONNECT") {
-      paired=1;
+      paired=true;
     }
     // this analyzes every single time a trigger is pulled
     // or a button is pressed or reload handle pulled. pretty cool
@@ -578,7 +578,7 @@ class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
 void notifyconnection() {
   sendString("$PLAY,VA20,3,9,,,,,*");
   Serial.println("sending connection notification");
-  paired=0;
+  paired=false;
 }
 //******************************************************************************************
 // disclaimer... incomplete... 
@@ -1083,6 +1083,7 @@ void loop() {
     
     // here we put in processes to run based upon conditions to make a game function
 
+    if (paired) {notifyconnection();}
     if (settingsallowed==1) {getsettings();} // this is triggered if a manual option is required for game settings
     if (settingsallowed==99) {exitgetsettings();} // this ends get settings mode
     if (RESPAWN) { // checks if respawn was triggered to respawn a player
