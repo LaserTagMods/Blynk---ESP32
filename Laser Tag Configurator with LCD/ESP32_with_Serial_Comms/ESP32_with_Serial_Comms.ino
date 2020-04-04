@@ -2,6 +2,7 @@
  * update 4/2/2020 annotations added and copied over objects for setting up games
  * update 4/3/2020 Cleaned up for more compatibility to serial comms programing
  * update 4/3/2020 Was able to plug in set setting from serial for friendly fire and outdoor/indoor mode
+ * update 4/4/2020 was able to get team settings and manual input team settings working as well as gender settings
  *
  * Written by Jay "the man" Burden
  *
@@ -261,16 +262,16 @@ int settingsallowed = 0; // trigger variable used to walk through steps for conf
 int SetSlotA; // this is for weapon slot 0
 int SetSlotB; // this is for weapon slot 1
 int SetSlotC; // this is for weapon slot 4 or melee used in pickups only (future)
-int SetTeam; // used to configure team player settings
+int SetTeam=0; // used to configure team player settings, default is 0
 int SetTime; // used for in game timer functions on esp32 (future
 int SetODMode=0; // used to set indoor and outdoor modes
 int SetWSMode; // used to enable player gun selection with lcd... (future)
-int SetGNDR; // used to change player to male/female
+int SetGNDR=0; // used to change player to male 0/female 1, male is default 
 int SetLives; // used for esp based game programs should be functional
 int SetRSPNMode; // used to set auto or manual respawns from bases/ir (future)
 int SetKillCnt; // to limit max kills
 int SetObjct; // to set objective goal counts
-int SetFF=0; // set game to friendly fire on/off (default is off)
+int SetFF=1; // set game to friendly fire on/off (default is on))
 int SetAmmo; // enable auto replenish of ammunition or from bases/players only
 int AmmoGndr=0; // used to split ammo and gender variables because i piggy backed them on one ir protocol set
 
@@ -284,6 +285,7 @@ int TeamKillCount[6] = {0}; // teams 0-6, Red-0, blue-1, yellow-2, green-3, purp
 int DelayStart = 10000; // set delay count down to 30 seconds for start
 bool OutofAmmoA = false; // trigger for auto respawn of ammo weapon slot 0
 bool OutofAmmoB = false; // trigger for auto respawn of ammo weapon slot 1
+String AudioSelection; // used to play stored audio files with tagger
 
 int lastTaggedPlayer = -1;  // used to capture player id who last shot gun, for kill count attribution
 int lastTaggedTeam = -1;  // used to captures last player team who shot gun, for kill count attribution
@@ -298,6 +300,7 @@ int lives = 0;
 bool RESPAWN = false; // trigger to enable auto respawn when killed in game
 bool GAMEOVER = false; // used to trigger game over and boot a gun out of play mode
 bool TAGGERUPDATE = false; // used to trigger sending data to ESP8266
+bool AUDIO = false; // used to trigger an audio on tagger
 
 long startScan = 0; // part of BLE enabling
 
@@ -359,6 +362,16 @@ static void notifyCallback(
         }
         if (tokenStrings[2] == "0") {
           Serial.println("Trigger Released"); // goes without sayin... you let go of the trigger
+          // upon release of a trigger, team settings can be changed if the proper allowance is in place
+          if (settingsallowed==2){
+            if (SetTeam==100) {SetTeam=0; AudioSelection="VA13"; AUDIO=true;}
+            if (SetTeam==0) {SetTeam=1; AudioSelection="VAL1"; AUDIO=true;}
+            if (SetTeam==1) {SetTeam=2; AudioSelection="VA1R"; AUDIO=true;}
+            if (SetTeam==2) {SetTeam=3; AudioSelection="VA27"; AUDIO=true;}
+            if (SetTeam==3) {SetTeam=4; AudioSelection="VA2G"; AUDIO=true;}
+            if (SetTeam==4) {SetTeam=5; AudioSelection="VA2Y"; AUDIO=true;}
+            if (SetTeam==5) {SetTeam=0; AudioSelection="VA13"; AUDIO=true;}          
+          }
         }
       }
       if (tokenStrings[1] == "1") {
@@ -367,6 +380,7 @@ static void notifyCallback(
         }
         if (tokenStrings[2] == "0") {
           Serial.println("Alt fire Released"); // now you released the button
+          if (settingsallowed>0) {settingsallowed=99;}
         }
       } // we can do more for left right select and reload but yeah... maybe another time
     }
@@ -798,6 +812,12 @@ void objectivesettings() {
 
 // sets and sends player settings to gun based upon configuration settings
 void playersettings() {
+  // token 2 is player id or gun id other tokens were interested in modification
+  // are 2 for team ID, 3 for max HP, 4 for max Armor, 5 for Max Shields, 
+  // 6 is critical damage bonus
+  // We really are only messing with Gender and Team though
+  // Gender is determined by the audio call outs listed, tokens 9 and on
+  // male is default as 0, female is 1
   if(SetGNDR == 0) {sendString("$PSET,"+String(GunID)+","+String(SetTeam)+",45,70,70,50,,H44,JAD,V33,V3I,V3C,V3G,V3E,V37,H06,H55,H13,H21,H02,U15,W71,A10,*");}
   else {sendString("$PSET,"+String(GunID)+","+String(SetTeam)+",45,70,70,50,,H44,JAD,VB3,VBI,VBC,VBG,VBE,VB7,H06,H55,H13,H21,H02,U15,W71,A10,*");}
   
@@ -905,6 +925,49 @@ void respawnplayer() {
   Serial.println("Player Respawned");
   RESPAWN = false;
 }
+//****************************************************************************************
+// this object is activated if a manual input is needed for gun settings
+// exitsettings object needs to be ran to leave this mode
+void getsettings() {
+  sendString("$START,*");
+  sendString("$GSET,1,0,1,0,1,0,50,1,*");
+  sendString("$PSET,64,5,200,200,200,,,,,,,,,,,,,,,,,,,*");
+  sendString("$VOL,75,0,*"); // sets max volume on gun 0-100 feet distance
+  sendString("$SIR,0,0,,1,0,0,1,,*");
+  sendString("$SIR,0,1,,36,0,0,1,,*");
+  sendString("$SIR,0,3,,37,0,0,1,,*");
+  sendString("$SIR,8,0,,38,0,0,1,,*");
+  sendString("$SIR,9,3,,24,10,0,,,*");
+  sendString("$SIR,10,0,X13,1,0,100,2,60,*");
+  sendString("$SIR,6,0,H02,1,0,90,1,40,*");
+  sendString("$SIR,13,1,H57,1,0,0,1,,*");
+  sendString("$SIR,13,0,H50,1,0,0,1,,*");
+  sendString("$SIR,13,3,H49,1,0,100,0,60,*");
+  sendString("$BMAP,0,0,,,,,*"); // button mapping
+  sendString("$BMAP,1,100,0,1,99,99,*"); // button mapping
+  sendString("$BMAP,2,97,,,,,*"); // button maping
+  sendString("$BMAP,3,98,,,,,*"); // button mapping
+  sendString("$BMAP,4,98,,,,,*"); // button mapping
+  sendString("$BMAP,5,98,,,,,*"); // button mapping
+  sendString("$BMAP,8,4,,,,,*"); // button mapping
+  sendString("$PLAYX,0,*");
+  sendString("$PLAY,SW04,4,6,,,,,*"); // plays starwars music
+  sendString("$SPAWN,,*");
+  sendString("$WEAP,0,*"); // cleared out weapon 0
+  sendString("$WEAP,1,*"); // cleared out weapon 1
+  sendString("$WEAP,4,*"); // cleared out melee weapon
+  sendString("$GLED,,,,5,,,*"); // changes headset to tagged out color
+  if (SetTeam=100) {settingsallowed=2;} // enables team selection from trigger input and exit game from alt fire input
+}
+
+void exitgetsettings() {
+  sendString("$GLED,,,,5,,,*"); // changes headset to tagged out color
+  delay(3000);
+  sendString("STOP,*"); // stops everything going on
+  sendString("CLEAR,*"); // clears out anything stored for game settings in gun, not esp
+  settingsallowed=0; // resets settings enabling trigger
+  Serial.println("successfully exited get settings gun state");
+}
 
 //******************************************************************************************
 //******************************************************************************************
@@ -922,22 +985,37 @@ void serialTask(void * params){
      if(SerialLCD.available()){
       String readtxt = SerialLCD.readStringUntil('\n');
       Serial.println(readtxt);
+      // set the BLE core to play audio
       // it is important to ensure that all following processes only assign a value
       // for a variable that is used by the other core to process and send BLE data
       // to tagger, dont call objects in here that are potentially used by the other core
       // What we need to do here is analyze the serial data from ESP8266 and do something with it
+      // So we set a programing variable, print the change to serial, and make the tagger confirm via audio
 
-      if(readtxt.toInt()==601) {SetODMode=0; Serial.println("Outdoor Mode On");}
-      if(readtxt.toInt()==602) {SetODMode=1; Serial.println("Indoor Mode On");}
-      if(readtxt.toInt()==603) {SetODMode=1; Serial.println("Stealth Mode On");}
+      if(readtxt.toInt()==601) {SetODMode=0; Serial.println("Outdoor Mode On"); AudioSelection="VA4W";}
+      if(readtxt.toInt()==602) {SetODMode=1; Serial.println("Indoor Mode On"); AudioSelection="VA3W";}
+      if(readtxt.toInt()==603) {SetODMode=1; Serial.println("Stealth Mode On"); AudioSelection="VA60";}
+
+      if(readtxt.toInt()==701) {Serial.println("Free For All"); SetTeam=0; AudioSelection="VA4W";}
+      if(readtxt.toInt()==702) {Serial.println("Teams Mode Two Teams (odds/evens)"); if (GunID % 2) {SetTeam=0; AudioSelection="VA13";} else {SetTeam=1; AudioSelection="VA1L";}}
+      if(readtxt.toInt()==705) {Serial.println("Teams Mode Player's Choice"); settingsallowed=1; SetTeam=100; AudioSelection="VA5E";} // this one allows for manual input of settings... each gun will need to select a team now
+            
+      if(readtxt.toInt()==1200) {SetGNDR=0; Serial.println("Gender set to Male"); AudioSelection="V3I";}
+      if(readtxt.toInt()==1201) {SetGNDR=1; Serial.println("Gender set to Female"); AudioSelection="VBI";}
       
-      if(readtxt.toInt()==1401) {SetFF=1; Serial.println("Friendly Fire On");}
-      if(readtxt.toInt()==1400) {SetFF=0; Serial.println("Friendly Fire Off");}
+      if(readtxt.toInt()==1401) {SetFF=1; Serial.println("Friendly Fire On"); AudioSelection="VA32";}
+      if(readtxt.toInt()==1400) {SetFF=0; Serial.println("Friendly Fire Off"); AudioSelection="VA31";}
+
+      if(1600 > readtxt.toInt() && readtxt.toInt() > 0) {AUDIO=true;} // sets trigger for other core BLE core to play an audio sound
     }
   }
 }
 TaskHandle_t  TaskSerial;
-
+//****************************************************************************
+void Audio() {
+  sendString("$PLAY,"+AudioSelection+",4,6,,,,,*");
+  AUDIO=false;
+}
 //******************************************************************************************
 //******************************************************************************************
 //******************************************************************************************
@@ -1004,11 +1082,17 @@ void loop() {
     //pRemoteCharacteristic->writeValue((uint8_t*)newValue.c_str(), newValue.length(),true);
     
     // here we put in processes to run based upon conditions to make a game function
+
+    if (settingsallowed==1) {getsettings();} // this is triggered if a manual option is required for game settings
+    if (settingsallowed==99) {exitgetsettings();} // this ends get settings mode
     if (RESPAWN) { // checks if respawn was triggered to respawn a player
       respawnplayer(); // respawns player
     }
     if (GAMEOVER) { // checks if something triggered game over (out of lives, objective met)
       gameover(); // runs object to kick player out of game
+    }
+    if (AUDIO) {
+      Audio();
     }
   }
   //************************************************************************************
