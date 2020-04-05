@@ -267,22 +267,21 @@ int SetTime; // used for in game timer functions on esp32 (future
 int SetODMode=0; // used to set indoor and outdoor modes
 int SetWSMode; // used to enable player gun selection with lcd... (future)
 int SetGNDR=0; // used to change player to male 0/female 1, male is default 
-int SetLives; // used for esp based game programs should be functional
 int SetRSPNMode; // used to set auto or manual respawns from bases/ir (future)
-int SetKillCnt; // to limit max kills
-int SetObjct; // to set objective goal counts
 int SetFF=1; // set game to friendly fire on/off (default is on))
 int SetAmmo; // enable auto replenish of ammunition or from bases/players only
 int AmmoGndr=0; // used to split ammo and gender variables because i piggy backed them on one ir protocol set
 
-int MaxKills = 32767; // setting limit on kill counts
+int MaxKills = 32000; // setting limit on kill counts
 int Objectives = 32000; // objective goals
-int PlayerLives = 32767; // setting max player lives
-int MaxTeamLives = 32767; // setting maximum team lives
+int PlayerLives = 32000; // setting max player lives
+int MaxTeamLives = 32000; // setting maximum team lives
 long GameTimer = 2000000000; // setting maximum game time
 int PlayerKillCount[64] = {0}; // so its players 0-63 as the player id.
 int TeamKillCount[6] = {0}; // teams 0-6, Red-0, blue-1, yellow-2, green-3, purple-4, cyan-5
-int DelayStart = 10000; // set delay count down to 30 seconds for start
+int DelayStart = 15000; // set delay count down to 30 seconds for start
+int GameMode=1; // for setting up general settings
+int Special=0; // special settings
 bool OutofAmmoA = false; // trigger for auto respawn of ammo weapon slot 0
 bool OutofAmmoB = false; // trigger for auto respawn of ammo weapon slot 1
 String AudioSelection; // used to play stored audio files with tagger
@@ -302,6 +301,7 @@ bool GAMEOVER = false; // used to trigger game over and boot a gun out of play m
 bool TAGGERUPDATE = false; // used to trigger sending data to ESP8266
 bool AUDIO = false; // used to trigger an audio on tagger
 bool PAIRED = false; // used as a trigger to notify that tagger and esp paired properly
+bool GAMESTART = false; // used to trigger game start
 
 long startScan = 0; // part of BLE enabling
 
@@ -647,7 +647,6 @@ void gameconfigurator() {
   sendString("$BMAP,4,98,,,,,*");
   sendString("$BMAP,5,98,,,,,*");
   sendString("$BMAP,8,4,,,,,*");
-  settingsallowed=6; // this is the next step... automatic now but maybe IR later
   Serial.println("Finished Game Configuration set up");
 }
 
@@ -663,60 +662,6 @@ void delaystart() {
   // sendString("$PLAY,VA81,4,6,,,,,*"); // plays the .. nevermind
   sendString("$SPAWN,,*");
   Serial.println("Delayed Start Complete, should be in game play mode now");
-}
-
-//******************************************************************************************
-
-// function called for to get the first burst of ir protocol settings
-void roundonesettings() {
-  SetSlotB=lastTaggedPlayer; // weapon slot 1 designated by player id
-  SetKillCnt=lastTaggedTeam; // kill count set by team id
-  SetLives=tokenStrings[2].toInt(); // lives set by bullet type
-  SetObjct=tokenStrings[5].toInt(); // objectives set by damage type
-  SetRSPNMode=tokenStrings[6].toInt(); // respawn mode determined by is critical
-  SetFF=tokenStrings[7].toInt(); // friendly fire enabled by power indicator
-  Serial.println("Round 2 settings loaded!");
-  Serial.print("Weapon Slot 1 set to: ");
-  Serial.println(SetSlotB);
-  Serial.print("Set kill count limit to: ");
-  Serial.println(SetKillCnt);
-  Serial.print("Set max lives to: ");
-  Serial.println(SetLives);
-  Serial.print("Set game objectives to: ");
-  Serial.println(SetObjct);
-  Serial.print("Set Respawn mode to: ");
-  Serial.println(SetRSPNMode);
-  Serial.print("Set friendly fire to: ");
-  Serial.println(SetFF);
-  gametimesettings();
-  gamelivessettings();
-  killcountsettings();
-  objectivesettings();
-  SetSlotA=lastTaggedPlayer; // using the player id for weapon slot 0
-  SetTeam=lastTaggedTeam; // using team id for team id
-  SetTime=tokenStrings[2].toInt(); // using bullet type protocol for in game timer
-  SetODMode=tokenStrings[5].toInt(); // using damage protocol for outdoor mode
-  SetWSMode=tokenStrings[6].toInt(); // using is critical protocol to set gun selection option
-  AmmoGndr=tokenStrings[7].toInt(); // using power type for gender set and ammo mode
-  if(AmmoGndr == 0) {SetGNDR=0; SetAmmo=0;} // just separating the two and assigning them separately
-  if(AmmoGndr == 1) {SetGNDR=1; SetAmmo=0;}
-  if(AmmoGndr == 2) {SetGNDR=0; SetAmmo=1;}
-  if(AmmoGndr == 3) {SetGNDR=1; SetAmmo=1;}
-  tokenStrings[0] = "null";
-  Serial.println("Round 1 settings loaded!"); // just said that!
-  Serial.print("Weapon slot 0 set to: ");
-  Serial.println(SetSlotA);
-  Serial.print("Team ID set to: ");
-  Serial.println(SetTeam);
-  Serial.print("Outdoor mode set to: ");
-  Serial.println(SetODMode);
-  Serial.print("Weapon Selection Mode: ");
-  Serial.println(SetWSMode);
-  Serial.print("Gender set to: ");
-  Serial.println(SetGNDR);
-  Serial.print("Ammo reload setting set to: ");
-  Serial.println(SetAmmo);
-  Serial.println("awaiting second ir programing tag");
 }
 
 //******************************************************************************************
@@ -748,70 +693,8 @@ void sendString(String value) {
   }
 }
 
-//******************************************************************************************
-
-void gametimesettings() {
-  /* ideally we want setting options for minutes: 1,3,5,10,20,30,60, unlimited
-   *  we will be using the bullet type ir or blynk for setting the time limits
-   */
-   if (SetTime = 0) {GameTimer=60000;} // timer set to one minute
-   if (SetTime = 1) {GameTimer=180000;} // timer set to 3 minutes
-   if (SetTime = 2) {GameTimer=300000;} // timer set to 5 minutes
-   if (SetTime = 3) {GameTimer=600000;} // timer set to 10 minutes
-   if (SetTime = 4) {GameTimer=1200000;} // timer set to 20 minutes
-   if (SetTime = 5) {GameTimer=1800000;} // timer set to 30 minutes
-   if (SetTime = 6) {GameTimer=3600000;} // timer set to 60 minutes
-   if (SetTime > 6) {GameTimer=2000000000;} // set to unlimited minutes
-  Serial.println("Timer set to " + String(GameTimer) + " milliseconds"); 
-}
 
 //******************************************************************************************
-
-void gamelivessettings() {
-  /* ideally we want setting options for minutes: 1,3,5,10,20,30,60, unlimited
-   *  we will be using the bullet type ir or blynk for setting the time limits
-   */
-   if (SetLives = 0) {PlayerLives=1;} // lives set to one 
-   if (SetLives = 1) {PlayerLives=3;} // lives set to 3 
-   if (SetLives = 2) {PlayerLives=5;} // lives set to 5 
-   if (SetLives = 3) {PlayerLives=10;} // lives set to 10 
-   if (SetLives = 4) {PlayerLives=20;} // lives set to 20 
-   if (SetLives = 5) {PlayerLives=30;} // lives set to 30 
-   if (SetLives = 6) {PlayerLives=60;} // lives set to 60 
-   if (SetLives > 6) {PlayerLives=32000;} // set to unlimited 
-   Serial.println("Lives set to " + String(PlayerLives) + " max lives"); 
-
-}
-
-//******************************************************************************************
-
-void killcountsettings() {
-  /* ideally we want setting options for max kills: 10,20,50, unlimited
-   *  we will be using the team type ir or blynk for setting the time limits
-   */
-   if (SetKillCnt = 0) {MaxKills=10;} // max kills set to 10 
-   if (SetKillCnt = 1) {MaxKills=20;} // max kills set to 20 
-   if (SetKillCnt = 2) {MaxKills=50;} // max kills set to 50 
-   if (SetKillCnt = 3) {MaxKills=32000;} // max kills set to unlimited
-   Serial.println("Kill limit set to " + String(MaxKills) + " total kills"); 
-}
-
-//******************************************************************************************
-
-void objectivesettings() {
-  /* ideally we want setting options for objectives: 10,20,50, unlimited
-   *  we will be using the team type ir or blynk for setting the time limits
-   */
-   if (SetObjct = 1) {Objectives=1;} // objectives set to 1 
-   if (SetObjct = 2) {Objectives=3;} // objectives set to 3 
-   if (SetObjct = 3) {Objectives=5;} // objectives set to 5 
-   if (SetObjct = 4) {Objectives=10;} // objectives set to 10
-   if (SetObjct > 4) {Objectives=32000;} // objectives set to unlimited
-   Serial.println("Objective limit set to " + String(Objectives) + " max points"); 
-}
-
-//******************************************************************************************
-
 // sets and sends player settings to gun based upon configuration settings
 void playersettings() {
   // token 2 is player id or gun id other tokens were interested in modification
@@ -822,7 +705,6 @@ void playersettings() {
   // male is default as 0, female is 1
   if(SetGNDR == 0) {sendString("$PSET,"+String(GunID)+","+String(SetTeam)+",45,70,70,50,,H44,JAD,V33,V3I,V3C,V3G,V3E,V37,H06,H55,H13,H21,H02,U15,W71,A10,*");}
   else {sendString("$PSET,"+String(GunID)+","+String(SetTeam)+",45,70,70,50,,H44,JAD,VB3,VBI,VBC,VBG,VBE,VB7,H06,H55,H13,H21,H02,U15,W71,A10,*");}
-  
 }
 
 //******************************************************************************************
@@ -994,62 +876,81 @@ void serialTask(void * params){
       // to tagger, dont call objects in here that are potentially used by the other core
       // What we need to do here is analyze the serial data from ESP8266 and do something with it
       // So we set a programing variable, print the change to serial, and make the tagger confirm via audio
-
-      if(readtxt.toInt()==2) {SetSlotA=1; Serial.println("Weapon Slot 0 set to Unarmed"); AudioSelection="VA19";}
-      if(readtxt.toInt()==3) {SetSlotA=2; Serial.println("Weapon Slot 0 set to AMR"); AudioSelection="VA19";}
-      if(readtxt.toInt()==4) {SetSlotA=3; Serial.println("Weapon Slot 0 set to Assault Rifle"); AudioSelection="VA19";}
-      if(readtxt.toInt()==5) {SetSlotA=4; Serial.println("Weapon Slot 0 set to Bolt Rifle"); AudioSelection="VA19";}
-      if(readtxt.toInt()==6) {SetSlotA=5; Serial.println("Weapon Slot 0 set to BurstRifle"); AudioSelection="VA19";}
-      if(readtxt.toInt()==7) {SetSlotA=6; Serial.println("Weapon Slot 0 set to ChargeRifle"); AudioSelection="VA19";}
-      if(readtxt.toInt()==8) {SetSlotA=7; Serial.println("Weapon Slot 0 set to Energy Launcher"); AudioSelection="VA19";}
-      if(readtxt.toInt()==9) {SetSlotA=8; Serial.println("Weapon Slot 0 set to Energy Rifle"); AudioSelection="VA19";}
-      if(readtxt.toInt()==10) {SetSlotA=9; Serial.println("Weapon Slot 0 set to Force Rifle"); AudioSelection="VA19";}
-      if(readtxt.toInt()==11) {SetSlotA=10; Serial.println("Weapon Slot 0 set to Ion Sniper"); AudioSelection="VA19";}
-      if(readtxt.toInt()==12) {SetSlotA=11; Serial.println("Weapon Slot 0 set to Laser Cannon"); AudioSelection="VA19";}
-      if(readtxt.toInt()==13) {SetSlotA=12; Serial.println("Weapon Slot 0 set to Plasma Sniper"); AudioSelection="VA19";}
-      if(readtxt.toInt()==14) {SetSlotA=13; Serial.println("Weapon Slot 0 set to Rail Gun"); AudioSelection="VA19";}
-      if(readtxt.toInt()==15) {SetSlotA=14; Serial.println("Weapon Slot 0 set to Rocket Launcher"); AudioSelection="VA19";}
-      if(readtxt.toInt()==16) {SetSlotA=15; Serial.println("Weapon Slot 0 set to Shotgun"); AudioSelection="VA19";}
-      if(readtxt.toInt()==17) {SetSlotA=16; Serial.println("Weapon Slot 0 set to SMG"); AudioSelection="VA19";}
-      if(readtxt.toInt()==18) {SetSlotA=17; Serial.println("Weapon Slot 0 set to Sniper Rifle"); AudioSelection="VA19";}
-      if(readtxt.toInt()==19) {SetSlotA=18; Serial.println("Weapon Slot 0 set to Stinger"); AudioSelection="VA19";}
-      if(readtxt.toInt()==20) {SetSlotA=19; Serial.println("Weapon Slot 0 set to Suppressor"); AudioSelection="VA19";}
-      if(readtxt.toInt()==102) {SetSlotB=1; Serial.println("Weapon Slot 1 set to Unarmed"); AudioSelection="VA19";}
-      if(readtxt.toInt()==103) {SetSlotB=2; Serial.println("Weapon Slot 1 set to AMR"); AudioSelection="VA19";}
-      if(readtxt.toInt()==104) {SetSlotB=3; Serial.println("Weapon Slot 1 set to Assault Rifle"); AudioSelection="VA19";}
-      if(readtxt.toInt()==105) {SetSlotB=4; Serial.println("Weapon Slot 1 set to Bolt Rifle"); AudioSelection="VA19";}
-      if(readtxt.toInt()==106) {SetSlotB=5; Serial.println("Weapon Slot 1 set to BurstRifle"); AudioSelection="VA19";}
-      if(readtxt.toInt()==107) {SetSlotB=6; Serial.println("Weapon Slot 1 set to ChargeRifle"); AudioSelection="VA19";}
-      if(readtxt.toInt()==108) {SetSlotB=7; Serial.println("Weapon Slot 1 set to Energy Launcher"); AudioSelection="VA19";}
-      if(readtxt.toInt()==109) {SetSlotB=8; Serial.println("Weapon Slot 1 set to Energy Rifle"); AudioSelection="VA19";}
-      if(readtxt.toInt()==110) {SetSlotB=9; Serial.println("Weapon Slot 1 set to Force Rifle"); AudioSelection="VA19";}
-      if(readtxt.toInt()==111) {SetSlotB=10; Serial.println("Weapon Slot 1 set to Ion Sniper"); AudioSelection="VA19";}
-      if(readtxt.toInt()==112) {SetSlotB=11; Serial.println("Weapon Slot 1 set to Laser Cannon"); AudioSelection="VA19";}
-      if(readtxt.toInt()==113) {SetSlotB=12; Serial.println("Weapon Slot 1 set to Plasma Sniper"); AudioSelection="VA19";}
-      if(readtxt.toInt()==114) {SetSlotB=13; Serial.println("Weapon Slot 1 set to Rail Gun"); AudioSelection="VA19";}
-      if(readtxt.toInt()==115) {SetSlotB=14; Serial.println("Weapon Slot 1 set to Rocket Launcher"); AudioSelection="VA19";}
-      if(readtxt.toInt()==116) {SetSlotB=15; Serial.println("Weapon Slot 1 set to Shotgun"); AudioSelection="VA19";}
-      if(readtxt.toInt()==117) {SetSlotB=16; Serial.println("Weapon Slot 1 set to SMG"); AudioSelection="VA19";}
-      if(readtxt.toInt()==118) {SetSlotB=17; Serial.println("Weapon Slot 1 set to Sniper Rifle"); AudioSelection="VA19";}
-      if(readtxt.toInt()==119) {SetSlotB=18; Serial.println("Weapon Slot 1 set to Stinger"); AudioSelection="VA19";}
-      if(readtxt.toInt()==120) {SetSlotB=19; Serial.println("Weapon Slot 1 set to Suppressor"); AudioSelection="VA19";}
-
-
-
-      
+      // setting weapon slot 0  
+      if(readtxt.toInt()==1) {settingsallowed=2; AudioSelection="VA5F"; Serial.println("Weapon Slot 0 set to Manual");}
+      if(readtxt.toInt() > 1 && readtxt.toInt() < 100) {SetSlotA=readtxt.toInt()-1; Serial.println("Weapon Slot 0 set"); AudioSelection="VA19";}  
+      // setting weapon slot 1
+      if(readtxt.toInt()==101) {settingsallowed=3; AudioSelection="VA5F"; Serial.println("Weapon Slot 1 set to Manual");}
+      if(readtxt.toInt() > 101 && readtxt.toInt() < 200) {SetSlotB=readtxt.toInt()-101; Serial.println("Weapon Slot 1 set"); AudioSelection="VA19";}
+      // setting objective count
+      if(readtxt.toInt()==200) {Objectives=32000; Serial.println("Objectives to win set to Unlimited"); AudioSelection="VA7P";}
+      if(readtxt.toInt() > 200 && readtxt.toInt() < 300) {Objectives=(readtxt.toInt() - 200); Serial.println("Objectives to win set to " + String(Objectives)); AudioSelection="VA7P";}
+      // setting kill count goal
+      if(readtxt.toInt() > 300 && readtxt.toInt() < 400) {MaxKills=(readtxt.toInt() - 300); Serial.println("Kills to win set to " + String(MaxKills)); AudioSelection="VN8";}
+      if(readtxt.toInt()==300) {MaxKills=32000; Serial.println("Kills to win set to Unlimited"); AudioSelection="VN8";}
+      // setting player lives
+      if(readtxt.toInt() > 400 && readtxt.toInt() < 500) {PlayerLives=(readtxt.toInt() - 300); Serial.println("Player Lives set to " + String(PlayerLives)); AudioSelection="VA47";}
+      if(readtxt.toInt()==400) {PlayerLives=32000; Serial.println("Kills to win set to Unlimited"); AudioSelection="VA47";}
+      // setting game time
+      if(readtxt.toInt()==501) {GameTimer=60000; Serial.println("Game time set to 1 minute"); AudioSelection="VA0V";}
+      if(readtxt.toInt()==502) {GameTimer=300000; Serial.println("Game time set to 5 minute"); AudioSelection="VA2S";}
+      if(readtxt.toInt()==503) {GameTimer=600000; Serial.println("Game time set to 10 minute"); AudioSelection="VA6H";}
+      if(readtxt.toInt()==504) {GameTimer=900000; Serial.println("Game time set to 15 minute"); AudioSelection="VA2P";}
+      if(readtxt.toInt()==505) {GameTimer=1200000; Serial.println("Game time set to 20 minute"); AudioSelection="VA6Q";}
+      if(readtxt.toInt()==506) {GameTimer=1500000; Serial.println("Game time set to 25 minute"); AudioSelection="VA6P";}
+      if(readtxt.toInt()==507) {GameTimer=1800000; Serial.println("Game time set to 30 minute"); AudioSelection="VA0Q";}
+      if(readtxt.toInt()==508) {GameTimer=2000000000; Serial.println("Game time set to Unlimited"); AudioSelection="VA34";}
+      // set outdoor/indoor settings
       if(readtxt.toInt()==601) {SetODMode=0; Serial.println("Outdoor Mode On"); AudioSelection="VA4W";}
       if(readtxt.toInt()==602) {SetODMode=1; Serial.println("Indoor Mode On"); AudioSelection="VA3W";}
       if(readtxt.toInt()==603) {SetODMode=1; Serial.println("Stealth Mode On"); AudioSelection="VA60";}
-
+      // set team settings
       if(readtxt.toInt()==701) {Serial.println("Free For All"); SetTeam=0; AudioSelection="VA4W";}
       if(readtxt.toInt()==702) {Serial.println("Teams Mode Two Teams (odds/evens)"); if (GunID % 2) {SetTeam=0; AudioSelection="VA13";} else {SetTeam=1; AudioSelection="VA1L";}}
       if(readtxt.toInt()==705) {Serial.println("Teams Mode Player's Choice"); settingsallowed=1; SetTeam=100; AudioSelection="VA5E";} // this one allows for manual input of settings... each gun will need to select a team now
-            
+      // setting game time
+      if(readtxt.toInt()==801) {GameMode=1; Serial.println("Game mode set to Deathmatch"); AudioSelection="VA5C";}
+      if(readtxt.toInt()==802) {GameMode=2; Serial.println("Game mode set to Capture the Flag"); AudioSelection="VA5C";}
+      if(readtxt.toInt()==803) {GameMode=3; Serial.println("Game mode set to Assault"); AudioSelection="VA5C";}
+      if(readtxt.toInt()==804) {GameMode=4; Serial.println("Game mode set to King of the Hill"); AudioSelection="VA5C";}
+      if(readtxt.toInt()==805) {GameMode=5; Serial.println("Game mode set to Survival"); AudioSelection="VA5C";}
+      if(readtxt.toInt()==806) {GameMode=6; Serial.println("Game mode set to Trouble in Terrorist Town"); AudioSelection="VA5C";}
+      if(readtxt.toInt()==807) {GameMode=7; Serial.println("Game mode set to You only live twice"); AudioSelection="VA5C";}
+      if(readtxt.toInt()==808) {GameMode=8; Serial.println("Game mode set to One Shot Kills"); AudioSelection="VA5C";}
+      if(readtxt.toInt()==809) {GameMode=9; Serial.println("Game mode set to Gun Game"); AudioSelection="VA5C";}
+      if(readtxt.toInt()==810) {GameMode=10; Serial.println("Game mode set to One Domination"); AudioSelection="VA5C";}
+      // Setting Respawn Settings
+      if(readtxt.toInt()==901) {SetRSPNMode=1; Serial.println("Respawn Set to Immediate"); AudioSelection="VA54";}
+      if(readtxt.toInt()==902) {SetRSPNMode=2; Serial.println("Respawn Set to 15 seconds"); AudioSelection="VA2Q";}
+      if(readtxt.toInt()==903) {SetRSPNMode=3; Serial.println("Respawn Set to 30 seconds"); AudioSelection="VA0R";}
+      if(readtxt.toInt()==904) {SetRSPNMode=4; Serial.println("Respawn Set to 45 seconds"); AudioSelection="VA0T";}
+      if(readtxt.toInt()==905) {SetRSPNMode=5; Serial.println("Respawn Set to 60 seconds"); AudioSelection="VA0V";}
+      if(readtxt.toInt()==906) {SetRSPNMode=6; Serial.println("Respawn Set to 90 seconds"); AudioSelection="VA0X";}
+      if(readtxt.toInt()==907) {SetRSPNMode=7; Serial.println("Respawn Set to Ramp 45"); AudioSelection="VA0S";}
+      if(readtxt.toInt()==908) {SetRSPNMode=8; Serial.println("Respawn Set to Ramp 90"); AudioSelection="VA0W";}
+      if(readtxt.toInt()==909) {SetRSPNMode=9; Serial.println("Respawn Set to Manual/Respawn Station"); AudioSelection="VA9H";}
+      // set start delay
+      if(readtxt.toInt()==1001) {DelayStart=1; Serial.println("Delay Start Set to Immediate"); AudioSelection="VA54";}
+      if(readtxt.toInt()==1002) {DelayStart=2; Serial.println("Delay Start Set to 15 seconds"); AudioSelection="VA2Q";}
+      if(readtxt.toInt()==1003) {DelayStart=3; Serial.println("Delay Start Set to 30 seconds"); AudioSelection="VA0R";}
+      if(readtxt.toInt()==1004) {DelayStart=4; Serial.println("Delay Start Set to 45 seconds"); AudioSelection="VA0T";}
+      if(readtxt.toInt()==1005) {DelayStart=5; Serial.println("Delay Start Set to 60 seconds"); AudioSelection="VA0V";}
+      if(readtxt.toInt()==1006) {DelayStart=6; Serial.println("Delay Start Set to 90 seconds"); AudioSelection="VA0X";}
+      if(readtxt.toInt()==1007) {DelayStart=7; Serial.println("Delay Start Set to 5 minutes"); AudioSelection="VA0S";}
+      if(readtxt.toInt()==1008) {DelayStart=8; Serial.println("Delay Start Set to 10 minutes"); AudioSelection="VA6H";}
+      if(readtxt.toInt()==1009) {DelayStart=9; Serial.println("Delay Start Set to 15 minutes"); AudioSelection="VA2P";}
+      // setting special abilities
+      if(readtxt.toInt()==1101) {Special=1; Serial.println("Special Set to Unknown"); AudioSelection="VA2P";}
+      if(readtxt.toInt()==1101) {Special=2; Serial.println("Special Set to Unknown"); AudioSelection="VA2P";}
+      // setting gender
       if(readtxt.toInt()==1200) {SetGNDR=0; Serial.println("Gender set to Male"); AudioSelection="V3I";}
       if(readtxt.toInt()==1201) {SetGNDR=1; Serial.println("Gender set to Female"); AudioSelection="VBI";}
-      
+      // setting friendly fire mode
       if(readtxt.toInt()==1401) {SetFF=1; Serial.println("Friendly Fire On"); AudioSelection="VA32";}
       if(readtxt.toInt()==1400) {SetFF=0; Serial.println("Friendly Fire Off"); AudioSelection="VA31";}
+      // 1500 not used yet
+      // enabling game start
+      if (readtxt.toInt()==1601) {GAMESTART=true; Serial.println("starting game");}
       // enable audio notification for changes
       if(1600 > readtxt.toInt() && readtxt.toInt() > 0) {AUDIO=true;}
     }
@@ -1139,6 +1040,10 @@ void loop() {
     }
     if (AUDIO) {
       Audio();
+    }
+    if (GAMESTART) {
+      gameconfigurator();
+      GAMESTART = false;
     }
   }
   //************************************************************************************
