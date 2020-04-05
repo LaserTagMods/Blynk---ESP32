@@ -4,6 +4,7 @@
  * update 4/3/2020 Was able to plug in set setting from serial for friendly fire and outdoor/indoor mode
  * update 4/4/2020 was able to get team settings and manual input team settings working as well as gender settings
  * updated 4/4/2020 included weapon selection assignment and notification to select in game settings manual options
+ * updated 4/5/2020 added most of remaining options for game functionality
  *
  * Written by Jay "the man" Burden
  *
