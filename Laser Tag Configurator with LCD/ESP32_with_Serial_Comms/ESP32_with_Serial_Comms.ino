@@ -4,7 +4,8 @@
  * update 4/3/2020 Was able to plug in set setting from serial for friendly fire and outdoor/indoor mode
  * update 4/4/2020 was able to get team settings and manual input team settings working as well as gender settings
  * updated 4/4/2020 included weapon selection assignment and notification to select in game settings manual options
- * updated 4/5/2020 added most of remaining options for game functionality
+ * updated 4/6/2020 separated many variables to not share writing abilities from both cores (trouble shooting)
+ *
  *
  * Written by Jay "the man" Burden
  *
@@ -262,17 +263,17 @@ char *ptr = NULL;
 int settingsallowed = 0; // trigger variable used to walk through steps for configuring gun(s)
 int SetSlotA=2; // this is for weapon slot 0
 int SetSlotB=1; // this is for weapon slot 1
+int SetLives=32000; // used for configuring lives
 int SetSlotC; // this is for weapon slot 4 or melee used in pickups only (future)
 int SetTeam=0; // used to configure team player settings, default is 0
-int SetTime; // used for in game timer functions on esp32 (future
+long SetTime=2000000000; // used for in game timer functions on esp32 (future
 int SetODMode=0; // used to set indoor and outdoor modes
-int SetWSMode; // used to enable player gun selection with lcd... (future)
 int SetGNDR=0; // used to change player to male 0/female 1, male is default 
 int SetRSPNMode; // used to set auto or manual respawns from bases/ir (future)
+int SetObj=32000; // used to program objectives
 int SetFF=1; // set game to friendly fire on/off (default is on))
-int SetAmmo; // enable auto replenish of ammunition or from bases/players only
-int AmmoGndr=0; // used to split ammo and gender variables because i piggy backed them on one ir protocol set
 
+int Team=0; // team selection used when allowed for custom configuration
 int MaxKills = 32000; // setting limit on kill counts
 int Objectives = 32000; // objective goals
 int PlayerLives = 32000; // setting max player lives
@@ -283,9 +284,11 @@ int TeamKillCount[6] = {0}; // teams 0-6, Red-0, blue-1, yellow-2, green-3, purp
 int DelayStart = 15000; // set delay count down to 30 seconds for start
 int GameMode=1; // for setting up general settings
 int Special=0; // special settings
+int AudioPlayCounter=0; // used to make sure audio is played only once (redundant check)
 bool OutofAmmoA = false; // trigger for auto respawn of ammo weapon slot 0
 bool OutofAmmoB = false; // trigger for auto respawn of ammo weapon slot 1
-String AudioSelection; // used to play stored audio files with tagger
+String AudioSelection; // used to play stored audio files with tagger FOR SERIAL CORE
+String AudioSelection1; // used to play stored audio files with tagger FOR BLE CORE
 
 int lastTaggedPlayer = -1;  // used to capture player id who last shot gun, for kill count attribution
 int lastTaggedTeam = -1;  // used to captures last player team who shot gun, for kill count attribution
@@ -300,9 +303,13 @@ int lives = 0;
 bool RESPAWN = false; // trigger to enable auto respawn when killed in game
 bool GAMEOVER = false; // used to trigger game over and boot a gun out of play mode
 bool TAGGERUPDATE = false; // used to trigger sending data to ESP8266
-bool AUDIO = false; // used to trigger an audio on tagger
+bool AUDIO = false; // used to trigger an audio on tagger FOR SERIAL CORE
+bool AUDIO1 = false; // used to trigger an audio on tagger FOR BLE CORE
 bool PAIRED = false; // used as a trigger to notify that tagger and esp paired properly
 bool GAMESTART = false; // used to trigger game start
+bool UNLIMITEDAMMO = false; // used to trigger ammo auto replenish if enabled
+bool TurnOffAudio=false; // used to trigger audio off from serial core
+bool EXITSETTINGS=false; // used to escape custom options allowed
 
 long startScan = 0; // part of BLE enabling
 
@@ -366,13 +373,13 @@ static void notifyCallback(
           Serial.println("Trigger Released"); // goes without sayin... you let go of the trigger
           // upon release of a trigger, team settings can be changed if the proper allowance is in place
           if (settingsallowed==2){
-            if (SetTeam==100) {SetTeam=0; AudioSelection="VA13"; AUDIO=true;}
-            if (SetTeam==0) {SetTeam=1; AudioSelection="VAL1"; AUDIO=true;}
-            if (SetTeam==1) {SetTeam=2; AudioSelection="VA1R"; AUDIO=true;}
-            if (SetTeam==2) {SetTeam=3; AudioSelection="VA27"; AUDIO=true;}
-            if (SetTeam==3) {SetTeam=4; AudioSelection="VA2G"; AUDIO=true;}
-            if (SetTeam==4) {SetTeam=5; AudioSelection="VA2Y"; AUDIO=true;}
-            if (SetTeam==5) {SetTeam=0; AudioSelection="VA13"; AUDIO=true;}          
+            if (SetTeam==100) {Team=0; AudioSelection1="VA13"; AUDIO1=true;}
+            if (SetTeam==0) {Team=1; AudioSelection1="VAL1"; AUDIO1=true;}
+            if (SetTeam==1) {Team=2; AudioSelection1="VA1R"; AUDIO1=true;}
+            if (SetTeam==2) {Team=3; AudioSelection1="VA27"; AUDIO1=true;}
+            if (SetTeam==3) {Team=4; AudioSelection1="VA2G"; AUDIO1=true;}
+            if (SetTeam==4) {Team=5; AudioSelection1="VA2Y"; AUDIO1=true;}
+            if (SetTeam==5) {Team=0; AudioSelection1="VA13"; AUDIO1=true;}          
           }
         }
       }
@@ -382,7 +389,7 @@ static void notifyCallback(
         }
         if (tokenStrings[2] == "0") {
           Serial.println("Alt fire Released"); // now you released the button
-          if (settingsallowed>0) {settingsallowed=99;}
+          if (settingsallowed>0) {EXITSETTINGS=true;}
         }
       } // we can do more for left right select and reload but yeah... maybe another time
     }
@@ -399,7 +406,7 @@ static void notifyCallback(
         space 6 is "is critical" if critical a damage multiplier would apply, rare.
         space 7 is "power", not sure what that does.*/
       //been tagged
-      TAGGERUPDATE=true;
+      //TAGGERUPDATE=true;
       lastTaggedPlayer = tokenStrings[3].toInt();
       lastTaggedTeam = tokenStrings[4].toInt();
       Serial.println("Just tagged by: " + String(lastTaggedPlayer) + " on team: " + String(lastTaggedTeam));
@@ -420,15 +427,17 @@ static void notifyCallback(
        *  
        *  more can be done with this, like using the ammo info to post to lcd
        */
-       TAGGERUPDATE=true;
-      if ((tokenStrings[2] == "0") && (tokenStrings[4] == "0")) { // yes thats right folks... if we are out of ammo we set that cool trigger variable
-        if ((tokenStrings[3] == "0")) {
-          OutofAmmoA=true; // here is the variable for weapon slot 0
-        }
-        else {
-          OutofAmmoB=true; // trigger variable for weapon slot 1
-        }
-      }    
+       //TAGGERUPDATE=true;
+       if(UNLIMITEDAMMO) {
+         if ((tokenStrings[2] == "0") && (tokenStrings[4] == "0")) { // yes thats right folks... if we are out of ammo we set that cool trigger variable
+           if ((tokenStrings[3] == "0")) {
+             OutofAmmoA=true; // here is the variable for weapon slot 0
+             }
+             else {
+               OutofAmmoB=true; // trigger variable for weapon slot 1
+               }
+            }
+          }    
     }
     
     // this guy is recieved from brx every time your health changes... usually after
@@ -440,7 +449,7 @@ static void notifyCallback(
       /*health status update occured
        * can be used for updates on health as well as death occurance
        */
-      TAGGERUPDATE=true;
+      //TAGGERUPDATE=true;
       health = tokenStrings[1].toInt();
       armor = tokenStrings[2].toInt();
       shield = tokenStrings[3].toInt();
@@ -452,14 +461,14 @@ static void notifyCallback(
         Serial.println("Killed by: " + String(lastTaggedPlayer) + " on team: " + String(lastTaggedTeam));
         Serial.println("Team: " + String(lastTaggedTeam) + "Score: " + String(TeamKillCount[lastTaggedTeam]));
         Serial.println("Player: " + String(lastTaggedPlayer) + " Score: " + String(PlayerKillCount[lastTaggedPlayer]));
-        if (PlayerLives > 0) { // doing a check if we still have lives left after dying
+        if (PlayerLives > 0 && SetRSPNMode < 9) { // doing a check if we still have lives left after dying
           RESPAWN = true;
-          Serial.println("respawn enabled");
-          GAMEOVER = false;
+          Serial.println("Auto respawn enabled");
         }
-        else {
-          GAMEOVER = true;
+        if (PlayerLives > 0 && SetRSPNMode == 9) {
+          // run manual respawn object
         }
+        if (PlayerLives == 0) {GAMEOVER=true;}
       }
     }
   } else {
@@ -649,6 +658,9 @@ void gameconfigurator() {
   sendString("$BMAP,5,98,,,,,*");
   sendString("$BMAP,8,4,,,,,*");
   Serial.println("Finished Game Configuration set up");
+  PlayerLives=SetLives; // sets configured lives from settings received
+  GameTimer=SetTime; // sets timer from input of esp8266
+  Objectives=SetObj; // sets configured objectives from esp8266
 }
 
 //****************************************************************************************
@@ -704,10 +716,14 @@ void playersettings() {
   // We really are only messing with Gender and Team though
   // Gender is determined by the audio call outs listed, tokens 9 and on
   // male is default as 0, female is 1
+  if (SetTeam=100) {
+    if(SetGNDR == 0) {sendString("$PSET,"+String(GunID)+","+String(Team)+",45,70,70,50,,H44,JAD,V33,V3I,V3C,V3G,V3E,V37,H06,H55,H13,H21,H02,U15,W71,A10,*");}
+    else {sendString("$PSET,"+String(GunID)+","+String(Team)+",45,70,70,50,,H44,JAD,VB3,VBI,VBC,VBG,VBE,VB7,H06,H55,H13,H21,H02,U15,W71,A10,*");}
+  } else{
   if(SetGNDR == 0) {sendString("$PSET,"+String(GunID)+","+String(SetTeam)+",45,70,70,50,,H44,JAD,V33,V3I,V3C,V3G,V3E,V37,H06,H55,H13,H21,H02,U15,W71,A10,*");}
   else {sendString("$PSET,"+String(GunID)+","+String(SetTeam)+",45,70,70,50,,H44,JAD,VB3,VBI,VBC,VBG,VBE,VB7,H06,H55,H13,H21,H02,U15,W71,A10,*");}
 }
-
+}
 //******************************************************************************************
 
 // sets and sends gun type to slot 0 based upon stored settings
@@ -851,7 +867,7 @@ void exitgetsettings() {
   delay(3000);
   sendString("STOP,*"); // stops everything going on
   sendString("CLEAR,*"); // clears out anything stored for game settings in gun, not esp
-  settingsallowed=0; // resets settings enabling trigger
+  EXITSETTINGS=false; // resets settings enabling trigger
   Serial.println("successfully exited get settings gun state");
 }
 
@@ -862,7 +878,7 @@ void exitgetsettings() {
 // this is where we write to variable to configure settings to send over BLE to tagger
 void serialTask(void * params){
   for(;;){
-    
+    if (TurnOffAudio) {AUDIO=false; AudioPlayCounter=0;}
     if (TAGGERUPDATE){
       String LCDText = String(ammo)+","+String(weap)+","+String(health)+","+String(armor)+","+String(shield)+","+String(lives);
       SerialLCD.println(LCDText);
@@ -884,23 +900,23 @@ void serialTask(void * params){
       if(readtxt.toInt()==101) {settingsallowed=3; AudioSelection="VA5F"; Serial.println("Weapon Slot 1 set to Manual");}
       if(readtxt.toInt() > 101 && readtxt.toInt() < 200) {SetSlotB=readtxt.toInt()-101; Serial.println("Weapon Slot 1 set"); AudioSelection="VA19";}
       // setting objective count
-      if(readtxt.toInt()==200) {Objectives=32000; Serial.println("Objectives to win set to Unlimited"); AudioSelection="VA7P";}
-      if(readtxt.toInt() > 200 && readtxt.toInt() < 300) {Objectives=(readtxt.toInt() - 200); Serial.println("Objectives to win set to " + String(Objectives)); AudioSelection="VA7P";}
+      if(readtxt.toInt()==200) {SetObj=32000; Serial.println("Objectives to win set to Unlimited"); AudioSelection="VA7P";}
+      if(readtxt.toInt() > 200 && readtxt.toInt() < 300) {SetObj=(readtxt.toInt() - 200); Serial.println("Objectives to win set to " + String(Objectives)); AudioSelection="VA7P";}
       // setting kill count goal
       if(readtxt.toInt() > 300 && readtxt.toInt() < 400) {MaxKills=(readtxt.toInt() - 300); Serial.println("Kills to win set to " + String(MaxKills)); AudioSelection="VN8";}
       if(readtxt.toInt()==300) {MaxKills=32000; Serial.println("Kills to win set to Unlimited"); AudioSelection="VN8";}
       // setting player lives
-      if(readtxt.toInt() > 400 && readtxt.toInt() < 500) {PlayerLives=(readtxt.toInt() - 300); Serial.println("Player Lives set to " + String(PlayerLives)); AudioSelection="VA47";}
+      if(readtxt.toInt() > 400 && readtxt.toInt() < 500) {SetLives=(readtxt.toInt() - 300); Serial.println("Player Lives set to " + String(PlayerLives)); AudioSelection="VA47";}
       if(readtxt.toInt()==400) {PlayerLives=32000; Serial.println("Kills to win set to Unlimited"); AudioSelection="VA47";}
       // setting game time
-      if(readtxt.toInt()==501) {GameTimer=60000; Serial.println("Game time set to 1 minute"); AudioSelection="VA0V";}
-      if(readtxt.toInt()==502) {GameTimer=300000; Serial.println("Game time set to 5 minute"); AudioSelection="VA2S";}
-      if(readtxt.toInt()==503) {GameTimer=600000; Serial.println("Game time set to 10 minute"); AudioSelection="VA6H";}
-      if(readtxt.toInt()==504) {GameTimer=900000; Serial.println("Game time set to 15 minute"); AudioSelection="VA2P";}
-      if(readtxt.toInt()==505) {GameTimer=1200000; Serial.println("Game time set to 20 minute"); AudioSelection="VA6Q";}
-      if(readtxt.toInt()==506) {GameTimer=1500000; Serial.println("Game time set to 25 minute"); AudioSelection="VA6P";}
-      if(readtxt.toInt()==507) {GameTimer=1800000; Serial.println("Game time set to 30 minute"); AudioSelection="VA0Q";}
-      if(readtxt.toInt()==508) {GameTimer=2000000000; Serial.println("Game time set to Unlimited"); AudioSelection="VA34";}
+      if(readtxt.toInt()==501) {SetTime=60000; Serial.println("Game time set to 1 minute"); AudioSelection="VA0V";}
+      if(readtxt.toInt()==502) {SetTime=300000; Serial.println("Game time set to 5 minute"); AudioSelection="VA2S";}
+      if(readtxt.toInt()==503) {SetTime=600000; Serial.println("Game time set to 10 minute"); AudioSelection="VA6H";}
+      if(readtxt.toInt()==504) {SetTime=900000; Serial.println("Game time set to 15 minute"); AudioSelection="VA2P";}
+      if(readtxt.toInt()==505) {SetTime=1200000; Serial.println("Game time set to 20 minute"); AudioSelection="VA6Q";}
+      if(readtxt.toInt()==506) {SetTime=1500000; Serial.println("Game time set to 25 minute"); AudioSelection="VA6P";}
+      if(readtxt.toInt()==507) {SetTime=1800000; Serial.println("Game time set to 30 minute"); AudioSelection="VA0Q";}
+      if(readtxt.toInt()==508) {SetTime=2000000000; Serial.println("Game time set to Unlimited"); AudioSelection="VA34";}
       // set outdoor/indoor settings
       if(readtxt.toInt()==601) {SetODMode=0; Serial.println("Outdoor Mode On"); AudioSelection="VA4W";}
       if(readtxt.toInt()==602) {SetODMode=1; Serial.println("Indoor Mode On"); AudioSelection="VA3W";}
@@ -947,6 +963,9 @@ void serialTask(void * params){
       if(readtxt.toInt()==1200) {SetGNDR=0; Serial.println("Gender set to Male"); AudioSelection="V3I";}
       if(readtxt.toInt()==1201) {SetGNDR=1; Serial.println("Gender set to Female"); AudioSelection="VBI";}
       // setting friendly fire mode
+      if(readtxt.toInt()==1300) {UNLIMITEDAMMO=true; Serial.println("Ammo set to unlimited"); AudioSelection="VA32";}
+      if(readtxt.toInt()==1400) {UNLIMITEDAMMO=false; Serial.println("Ammo set to limited"); AudioSelection="VA31";}
+      // setting Auto ammo replenish mode
       if(readtxt.toInt()==1401) {SetFF=1; Serial.println("Friendly Fire On"); AudioSelection="VA32";}
       if(readtxt.toInt()==1400) {SetFF=0; Serial.println("Friendly Fire Off"); AudioSelection="VA31";}
       // 1500 not used yet
@@ -960,8 +979,9 @@ void serialTask(void * params){
 TaskHandle_t  TaskSerial;
 //****************************************************************************
 void Audio() {
-  sendString("$PLAY,"+AudioSelection+",4,6,,,,,*");
-  AUDIO=false;
+  if (AUDIO) {
+    if(AudioPlayCounter == 0) {AudioPlayCounter++; sendString("$PLAY,"+AudioSelection+",4,6,,,,,*"); TurnOffAudio=true;}}
+  if (AUDIO1) {sendString("$PLAY,"+AudioSelection1+",4,6,,,,,*"); AUDIO1=false; TurnOffAudio=false;}
 }
 //******************************************************************************************
 //******************************************************************************************
@@ -1003,7 +1023,7 @@ void setup() {
 //******************************************************************************************
 //******************************************************************************************
 
-// This is the Arduino main loop function.
+// This is the Arduino main loop function for the BLE Core.
 void loop() {
   // the main loop for BLE activity is here, it is devided in three sections....
   // sections are for when connected, when not connected and to connect again
@@ -1032,7 +1052,7 @@ void loop() {
 
     if (PAIRED) {notifyconnection();}
     if (settingsallowed==1) {getsettings();} // this is triggered if a manual option is required for game settings
-    if (settingsallowed==99) {exitgetsettings();} // this ends get settings mode
+    if (EXITSETTINGS) {exitgetsettings();} // this ends get settings mode
     if (RESPAWN) { // checks if respawn was triggered to respawn a player
       respawnplayer(); // respawns player
     }
@@ -1041,10 +1061,19 @@ void loop() {
     }
     if (AUDIO) {
       Audio();
+    } else {TurnOffAudio=false;}
+    if (AUDIO1) {
+      Audio();
     }
     if (GAMESTART) {
       gameconfigurator();
       GAMESTART = false;
+    }
+    if (OutofAmmoA) {
+      weaponsettingsA();
+    }
+    if (OutofAmmoB) {
+        weaponsettingsB();
     }
   }
   //************************************************************************************
