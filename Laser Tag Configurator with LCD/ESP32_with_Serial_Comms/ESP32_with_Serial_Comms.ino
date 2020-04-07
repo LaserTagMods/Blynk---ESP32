@@ -6,6 +6,7 @@
  * updated 4/4/2020 included weapon selection assignment and notification to select in game settings manual options
  * updated 4/6/2020 separated many variables to not share writing abilities from both cores (trouble shooting)
  * upfsyrf 4/7/2020 finished isolating variables between cores to eliminate both cores writing to same variables
+ * updated 4/7/2020 fixed the resetting of the BLE function so device stays paired to brx, also integrated the delay start with the send game settings to start the game
  * 
  *
  * Written by Jay "the man" Burden
@@ -307,7 +308,6 @@ bool GAMEOVER = false; // used to trigger game over and boot a gun out of play m
 bool TAGGERUPDATE = false; // used to trigger sending data to ESP8266
 bool AUDIO = false; // used to trigger an audio on tagger FOR SERIAL CORE
 bool AUDIO1 = false; // used to trigger an audio on tagger FOR BLE CORE
-bool PAIRED = false; // used as a trigger to notify that tagger and esp paired properly
 bool GAMESTART = false; // used to trigger game start
 bool UNLIMITEDAMMO = false; // used to trigger ammo auto replenish if enabled
 bool TurnOffAudio=false; // used to trigger audio off from serial core
@@ -356,9 +356,7 @@ static void notifyCallback(
     //*******************************************************
     // first signal we get from gun is this one and it tells the esp
     // that gun is happy with the connection
-    if (tokenStrings[0] == "$#CONNECT") {
-      PAIRED=true;
-    }
+    if (tokenStrings[0] == "$#CONNECT") {AudioSelection1="VA20"; AUDIO1=true;}
     // this analyzes every single time a trigger is pulled
     // or a button is pressed or reload handle pulled. pretty cool
     // i dont do much with it yet here but will be used later to allow
@@ -585,14 +583,7 @@ class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
 }; // MyAdvertisedDeviceCallbacks
 
 
-//******************************************************************************************
-// after recieving the first notification from gun that says connect we enable this function
-// to give you a notification that the gun paired properly with esp device
-void notifyconnection() {
-  sendString("$PLAY,VA20,3,9,,,,,*");
-  Serial.println("sending connection notification");
-  PAIRED=false;
-}
+
 //******************************************************************************************
 // disclaimer... incomplete... 
 // this function will be used when a player is eliminated and needs to respawn off of a base
@@ -670,10 +661,12 @@ void gameconfigurator() {
 // this starts a game
 void delaystart() {
   Serial.println("Starting Delayed Game Start");
-  sendString("$VOL,100,0,*"); // sets max volume on gun 0-100 feet distance
-  sendString("$PLAY,VA84,4,5,,,,,*"); // plays a ten second countdown
+  sendString("$VOL,75,0,*"); // sets max volume on gun 0-100 feet distance
+  //sendString("$PLAY,VA84,4,5,,,,,*"); // plays a ten second countdown
+  sendString("$HLED,,6,,,,,*"); // changes headset to end of game
   delay(DelayStart); // delays ten seconds or as configured
-  // sendString("$PLAY,VA81,4,6,,,,,*"); // plays the .. nevermind
+  sendString("$PLAY,VA81,4,6,,,,,*"); // plays the .. nevermind
+  sendString("$PLAYX,0,*");
   sendString("$SPAWN,,*");
   Serial.println("Delayed Start Complete, should be in game play mode now");
 }
@@ -869,7 +862,12 @@ void exitgetsettings() {
   EXITSETTINGS=false; // resets settings enabling trigger
   Serial.println("successfully exited get settings gun state");
 }
-
+//****************************************************************************
+void Audio() {
+  if (AUDIO) {
+    if(AudioPlayCounter == 0) {AudioPlayCounter++; sendString("$PLAY,"+AudioSelection+",4,6,,,,,*"); TurnOffAudio=true;}}
+  if (AUDIO1) {sendString("$PLAY,"+AudioSelection1+",4,6,,,,,*"); AUDIO1=false; TurnOffAudio=false;}
+}
 //******************************************************************************************
 //******************************************************************************************
 //******************************************************************************************
@@ -974,15 +972,10 @@ void serialTask(void * params){
       // enable audio notification for changes
       if(1600 > readtxt.toInt() && readtxt.toInt() > 0) {AUDIO=true;}
     }
+    delay(2000);
   }
 }
 TaskHandle_t  TaskSerial;
-//****************************************************************************
-void Audio() {
-  if (AUDIO) {
-    if(AudioPlayCounter == 0) {AudioPlayCounter++; sendString("$PLAY,"+AudioSelection+",4,6,,,,,*"); TurnOffAudio=true;}}
-  if (AUDIO1) {sendString("$PLAY,"+AudioSelection1+",4,6,,,,,*"); AUDIO1=false; TurnOffAudio=false;}
-}
 //******************************************************************************************
 //******************************************************************************************
 //******************************************************************************************
@@ -1050,7 +1043,6 @@ void loop() {
     
     // here we put in processes to run based upon conditions to make a game function
 
-    if (PAIRED) {notifyconnection();}
     if (settingsallowed>0) {settingsallowed1==settingsallowed; getsettings();} // this is triggered if a manual option is required for game settings
     if (EXITSETTINGS) {exitgetsettings();} // this ends get settings mode
     if (RESPAWN) { // checks if respawn was triggered to respawn a player
@@ -1067,6 +1059,7 @@ void loop() {
     }
     if (GAMESTART) {
       gameconfigurator();
+      delaystart();
       GAMESTART = false;
     }
     if (OutofAmmoA) {
@@ -1075,9 +1068,8 @@ void loop() {
     if (OutofAmmoB) {
         weaponsettingsB();
     }
-  }
-  //************************************************************************************
-  else if (doScan) {
+//************************************************************************************
+  } else if (doScan) {
     if (millis() - startScan > 11000) {
       Serial.println("Scanning again");
       BLEDevice::init("");
@@ -1085,4 +1077,5 @@ void loop() {
       startScan = millis();
     }
   }
+  delay(1000); // delay a second between loops.
 } // End of loop
