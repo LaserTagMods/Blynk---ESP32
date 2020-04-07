@@ -5,7 +5,8 @@
  * update 4/4/2020 was able to get team settings and manual input team settings working as well as gender settings
  * updated 4/4/2020 included weapon selection assignment and notification to select in game settings manual options
  * updated 4/6/2020 separated many variables to not share writing abilities from both cores (trouble shooting)
- *
+ * upfsyrf 4/7/2020 finished isolating variables between cores to eliminate both cores writing to same variables
+ * 
  *
  * Written by Jay "the man" Burden
  *
@@ -260,7 +261,8 @@ char *ptr = NULL;
 
 // these are variables im using to create settings for the game mode and
 // gun settings
-int settingsallowed = 0; // trigger variable used to walk through steps for configuring gun(s)
+int settingsallowed = 0; // trigger variable used to walk through steps for configuring gun(s) for serial core
+int settingsallowed1 = 0; // trigger variable used to walk through steps for configuring gun(s) for BLE core
 int SetSlotA=2; // this is for weapon slot 0
 int SetSlotB=1; // this is for weapon slot 1
 int SetLives=32000; // used for configuring lives
@@ -372,14 +374,13 @@ static void notifyCallback(
         if (tokenStrings[2] == "0") {
           Serial.println("Trigger Released"); // goes without sayin... you let go of the trigger
           // upon release of a trigger, team settings can be changed if the proper allowance is in place
-          if (settingsallowed==2){
-            if (SetTeam==100) {Team=0; AudioSelection1="VA13"; AUDIO1=true;}
-            if (SetTeam==0) {Team=1; AudioSelection1="VAL1"; AUDIO1=true;}
-            if (SetTeam==1) {Team=2; AudioSelection1="VA1R"; AUDIO1=true;}
-            if (SetTeam==2) {Team=3; AudioSelection1="VA27"; AUDIO1=true;}
-            if (SetTeam==3) {Team=4; AudioSelection1="VA2G"; AUDIO1=true;}
-            if (SetTeam==4) {Team=5; AudioSelection1="VA2Y"; AUDIO1=true;}
-            if (SetTeam==5) {Team=0; AudioSelection1="VA13"; AUDIO1=true;}          
+          if (settingsallowed1==3){
+            if (Team==0) {Team=1; AudioSelection1="VAL1"; AUDIO1=true;}
+            if (Team==1) {Team=2; AudioSelection1="VA1R"; AUDIO1=true;}
+            if (Team==2) {Team=3; AudioSelection1="VA27"; AUDIO1=true;}
+            if (Team==3) {Team=4; AudioSelection1="VA2G"; AUDIO1=true;}
+            if (Team==4) {Team=5; AudioSelection1="VA2Y"; AUDIO1=true;}
+            if (Team==5) {Team=0; AudioSelection1="VA13"; AUDIO1=true;}          
           }
         }
       }
@@ -389,7 +390,7 @@ static void notifyCallback(
         }
         if (tokenStrings[2] == "0") {
           Serial.println("Alt fire Released"); // now you released the button
-          if (settingsallowed>0) {EXITSETTINGS=true;}
+          if (settingsallowed1>0) {EXITSETTINGS=true; settingsallowed=0;}
         }
       } // we can do more for left right select and reload but yeah... maybe another time
     }
@@ -793,7 +794,6 @@ void gameover() {
   sendString("CLEAR,*"); // clears out anything stored for game settings
   sendString("$PLAY,VS6,4,6,,,,,*"); // says game over
   GAMEOVER = false;
-  settingsallowed=0;
 }
 
 //******************************************************************************************
@@ -859,7 +859,6 @@ void getsettings() {
   sendString("$WEAP,1,*"); // cleared out weapon 1
   sendString("$WEAP,4,*"); // cleared out melee weapon
   sendString("$GLED,,,,5,,,*"); // changes headset to tagged out color
-  if (SetTeam=100) {settingsallowed=2;} // enables team selection from trigger input and exit game from alt fire input
 }
 
 void exitgetsettings() {
@@ -878,6 +877,7 @@ void exitgetsettings() {
 // this is where we write to variable to configure settings to send over BLE to tagger
 void serialTask(void * params){
   for(;;){
+    if (settingsallowed1>0) {settingsallowed=0;}
     if (TurnOffAudio) {AUDIO=false; AudioPlayCounter=0;}
     if (TAGGERUPDATE){
       String LCDText = String(ammo)+","+String(weap)+","+String(health)+","+String(armor)+","+String(shield)+","+String(lives);
@@ -894,10 +894,10 @@ void serialTask(void * params){
       // What we need to do here is analyze the serial data from ESP8266 and do something with it
       // So we set a programing variable, print the change to serial, and make the tagger confirm via audio
       // setting weapon slot 0  
-      if(readtxt.toInt()==1) {settingsallowed=2; AudioSelection="VA5F"; Serial.println("Weapon Slot 0 set to Manual");}
+      if(readtxt.toInt()==1) {settingsallowed=1; AudioSelection="VA5F"; Serial.println("Weapon Slot 0 set to Manual");}
       if(readtxt.toInt() > 1 && readtxt.toInt() < 100) {SetSlotA=readtxt.toInt()-1; Serial.println("Weapon Slot 0 set"); AudioSelection="VA19";}  
       // setting weapon slot 1
-      if(readtxt.toInt()==101) {settingsallowed=3; AudioSelection="VA5F"; Serial.println("Weapon Slot 1 set to Manual");}
+      if(readtxt.toInt()==101) {settingsallowed=2; AudioSelection="VA5F"; Serial.println("Weapon Slot 1 set to Manual");}
       if(readtxt.toInt() > 101 && readtxt.toInt() < 200) {SetSlotB=readtxt.toInt()-101; Serial.println("Weapon Slot 1 set"); AudioSelection="VA19";}
       // setting objective count
       if(readtxt.toInt()==200) {SetObj=32000; Serial.println("Objectives to win set to Unlimited"); AudioSelection="VA7P";}
@@ -924,7 +924,7 @@ void serialTask(void * params){
       // set team settings
       if(readtxt.toInt()==701) {Serial.println("Free For All"); SetTeam=0; AudioSelection="VA4W";}
       if(readtxt.toInt()==702) {Serial.println("Teams Mode Two Teams (odds/evens)"); if (GunID % 2) {SetTeam=0; AudioSelection="VA13";} else {SetTeam=1; AudioSelection="VA1L";}}
-      if(readtxt.toInt()==705) {Serial.println("Teams Mode Player's Choice"); settingsallowed=1; SetTeam=100; AudioSelection="VA5E";} // this one allows for manual input of settings... each gun will need to select a team now
+      if(readtxt.toInt()==705) {Serial.println("Teams Mode Player's Choice"); settingsallowed=3; SetTeam=100; AudioSelection="VA5E";} // this one allows for manual input of settings... each gun will need to select a team now
       // setting game time
       if(readtxt.toInt()==801) {GameMode=1; Serial.println("Game mode set to Deathmatch"); AudioSelection="VA5C";}
       if(readtxt.toInt()==802) {GameMode=2; Serial.println("Game mode set to Capture the Flag"); AudioSelection="VA5C";}
@@ -1051,7 +1051,7 @@ void loop() {
     // here we put in processes to run based upon conditions to make a game function
 
     if (PAIRED) {notifyconnection();}
-    if (settingsallowed==1) {getsettings();} // this is triggered if a manual option is required for game settings
+    if (settingsallowed>0) {settingsallowed1==settingsallowed; getsettings();} // this is triggered if a manual option is required for game settings
     if (EXITSETTINGS) {exitgetsettings();} // this ends get settings mode
     if (RESPAWN) { // checks if respawn was triggered to respawn a player
       respawnplayer(); // respawns player
