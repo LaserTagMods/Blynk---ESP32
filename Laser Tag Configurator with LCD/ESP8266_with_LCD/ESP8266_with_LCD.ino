@@ -21,6 +21,7 @@
  *  4/3/2020 - Jay - started incorporating and testing blynk in code, added annotations
  *  4/3/2020 - Jay - added blynk write commands
  *  4/3/2020 - Jay - Reconfigured sketch for running on local blynk server
+ *  4/8/2020 - Jay - Added volume control for taggers, also added battle royale mode selection for future use
  *  
  */ 
 
@@ -31,7 +32,6 @@
  *  Each time a value is sent to the ESP32 the value needs to be reset to "0" or default
  *  
  *  Format: (Variable Value to be sent - Intended Action to be processed by ESP32)
-
 Format below: (ToESP32 value)(Setting)(Selection) (Virtual Pin) (Pin Value)
 0   Do nothing    None    N/A   N/A
 1   Weapon Slot 0 =   Player's Choice   V0    1
@@ -228,12 +228,12 @@ Format below: (ToESP32 value)(Setting)(Selection) (Virtual Pin) (Pin Value)
 //**********************************************************************************
 // You should get Auth Token in the Blynk App.
 // Go to the Project Settings (nut icon).
-char auth[] = "wHfjglHvyD4qBv7PB8C9DKTY-NNp8VGr";
-
+//char auth[] = "wHfjglHvyD4qBv7PB8C9DKTY-NNp8VGr";
+char auth[] = "nAL11Xm5K05AYh7Nh6A0PccJRKO3wnZt";
 // Your WiFi credentials.
 // Set password to "" for open networks.
-char ssid[] = "Burtek Energy";
-char pass[] = "Sunpower2020";
+char ssid[] = "maxipad";
+char pass[] = "9165047812";
 //**********************************************************************************
 //****************************  UPDATE THIS SECTION!!!!! ***************************
 //**********************************************************************************
@@ -504,6 +504,7 @@ if (b==7) {ToESP32=807; SendESP32Data(); Serial.println("Game Mode is set to You
 if (b==8) {ToESP32=808; SendESP32Data(); Serial.println("Game Mode is set to One Shot Kills (pistols)");}
 if (b==9) {ToESP32=809; SendESP32Data(); Serial.println("Game Mode is set to Gun Game");}
 if (b==10) {ToESP32=810; SendESP32Data(); Serial.println("Game Mode is set to Domination");}
+if (b==11) {ToESP32=811; SendESP32Data(); Serial.println("Game Mode is set to Battle Royale");}
 }
 
 // Sets Respawn Mode
@@ -565,8 +566,7 @@ if (b==1) {ToESP32=1401; SendESP32Data(); Serial.println("Friendly Fire is set t
 // Sets Unasigned still, space holder for additional settings
 BLYNK_WRITE(V15) {
 int b=param.asInt();
-if (b==0) {ToESP32=1500; SendESP32Data(); Serial.println("Reserved is set to item");}
-if (b==1) {ToESP32=1501; SendESP32Data(); Serial.println("Reserved is set to item");}
+ToESP32 = (1500+b); SendESP32Data(); Serial.println("Volume is set to " + String(ToESP32));
 }
 
 // Starts a game
@@ -595,7 +595,8 @@ void setup()
 //**********************************************************************************
 //****************************  UPDATE THIS SECTION!!!!! ***************************
 //**********************************************************************************
-  Blynk.begin(auth, ssid, pass, IPAddress(192,168,1,80), 8080);
+  //Blynk.begin(auth, ssid, pass, IPAddress(192,168,1,80), 8080);
+  Blynk.begin(auth, ssid, pass);
 //**********************************************************************************
 //****************************  UPDATE THIS SECTION!!!!! ***************************
 //**********************************************************************************
