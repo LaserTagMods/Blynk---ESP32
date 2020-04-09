@@ -9,7 +9,13 @@
  * updated 4/7/2020 fixed the resetting of the BLE function so device stays paired to brx, also integrated the delay start with the send game settings to start the game
  * updated 4/8/2020 fixed some menu callout audio selections, reduced the delay time to verify what is best and still functions to avoid disconnects
  * updated 4/8/2020 fixed weapon slot 1 loading issue, was set to weapon slot 0 so guns were overwriting.
+ * updated 4/9/2020 fixed team selection item number and set freindly fire on when free for all selection is made for team selection.
+ * updated 4/9/2020 fixed audio announcement for teams for free for all to say free for all
+ * updated 4/9/2020 fixed audio announcement for domination to read control point versus select a game
+ * updated 4/9/2020 fixed limited ammo, wasnt allowing limited ammo due to incrorrect if then statement setting
+ * updated 4/9/2020 fixed the manual team selection option to enable players to pick their own teams
  * 
+ *
  *
  * Written by Jay Burden
  *
@@ -272,7 +278,7 @@ int SetLives=32000; // used for configuring lives
 int SetSlotC; // this is for weapon slot 4 or melee used in pickups only (future)
 int SetTeam=0; // used to configure team player settings, default is 0
 long SetTime=2000000000; // used for in game timer functions on esp32 (future
-int SetODMode=0; // used to set indoor and outdoor modes
+int SetODMode=0; // used to set indoor and outdoor modes (default is on)
 int SetGNDR=0; // used to change player to male 0/female 1, male is default 
 int SetRSPNMode; // used to set auto or manual respawns from bases/ir (future)
 int SetObj=32000; // used to program objectives
@@ -287,7 +293,7 @@ int MaxTeamLives = 32000; // setting maximum team lives
 long GameTimer = 2000000000; // setting maximum game time
 int PlayerKillCount[64] = {0}; // so its players 0-63 as the player id.
 int TeamKillCount[6] = {0}; // teams 0-6, Red-0, blue-1, yellow-2, green-3, purple-4, cyan-5
-int DelayStart = 15000; // set delay count down to 30 seconds for start
+int DelayStart = 0; // set delay count down to 0 seconds for default
 int GameMode=1; // for setting up general settings
 int Special=0; // special settings
 int AudioPlayCounter=0; // used to make sure audio is played only once (redundant check)
@@ -315,6 +321,8 @@ bool GAMESTART = false; // used to trigger game start
 bool UNLIMITEDAMMO = false; // used to trigger ammo auto replenish if enabled
 bool TurnOffAudio=false; // used to trigger audio off from serial core
 bool EXITSETTINGS=false; // used to escape custom options allowed
+bool GETTEAM=false; // used when configuring customized settings
+bool STATUSCHANGE=false; // used to loop through selectable customized options
 
 long startScan = 0; // part of BLE enabling
 
@@ -375,13 +383,14 @@ static void notifyCallback(
         if (tokenStrings[2] == "0") {
           Serial.println("Trigger Released"); // goes without sayin... you let go of the trigger
           // upon release of a trigger, team settings can be changed if the proper allowance is in place
-          if (settingsallowed1==3){
-            if (Team==0) {Team=1; AudioSelection1="VAL1"; AUDIO1=true;}
-            if (Team==1) {Team=2; AudioSelection1="VA1R"; AUDIO1=true;}
-            if (Team==2) {Team=3; AudioSelection1="VA27"; AUDIO1=true;}
-            if (Team==3) {Team=4; AudioSelection1="VA2G"; AUDIO1=true;}
-            if (Team==4) {Team=5; AudioSelection1="VA2Y"; AUDIO1=true;}
-            if (Team==5) {Team=0; AudioSelection1="VA13"; AUDIO1=true;}          
+          if (GETTEAM){
+            if (Team==5) {Team=0; STATUSCHANGE=true; AudioSelection1="VA13"; AUDIO1=true; Serial.println("team changed from 5 to 0");}          
+            if (Team==4) {Team=5; AudioSelection1="VA2Y"; AUDIO1=true; Serial.println("team changed from 4 to 5");} // foxtrot team
+            if (Team==3) {Team=4; AudioSelection1="VA2G"; AUDIO1=true; Serial.println("team changed from 3 to 4");} // echo team
+            if (Team==2) {Team=3; AudioSelection1="VA27"; AUDIO1=true; Serial.println("team changed from 2 to 3");} // delta team
+            if (Team==1) {Team=2; AudioSelection1="VA1R"; AUDIO1=true; Serial.println("team changed from 1 to 2");} // charlie team
+            if (Team==0 && STATUSCHANGE==false) {Team=1; AudioSelection1="VA1L"; AUDIO1=true; Serial.println("team changed from 0 to 1");} // bravo team        
+            STATUSCHANGE=false;
           }
         }
       }
@@ -391,7 +400,7 @@ static void notifyCallback(
         }
         if (tokenStrings[2] == "0") {
           Serial.println("Alt fire Released"); // now you released the button
-          if (settingsallowed1>0) {EXITSETTINGS=true; settingsallowed=0;}
+          if (GETTEAM) {EXITSETTINGS=true; GETTEAM=false; AudioSelection1="VAO"; AUDIO1=true;}
         }
       } // we can do more for left right select and reload but yeah... maybe another time
     }
@@ -878,7 +887,7 @@ void Audio() {
 // this is where we write to variable to configure settings to send over BLE to tagger
 void serialTask(void * params){
   for(;;){
-    if (settingsallowed1>0) {settingsallowed=0;}
+    if (settingsallowed1>0) {settingsallowed=0;} // checking that a trigger was set from other core, if so, disabling it on this core
     if (TurnOffAudio) {AUDIO=false; AudioPlayCounter=0;}
     if (TAGGERUPDATE){
       String LCDText = String(ammo)+","+String(weap)+","+String(health)+","+String(armor)+","+String(shield)+","+String(lives);
@@ -923,9 +932,9 @@ void serialTask(void * params){
       if(readtxt.toInt()==602) {SetODMode=1; Serial.println("Indoor Mode On"); AudioSelection="VA3W";}
       if(readtxt.toInt()==603) {SetODMode=1; Serial.println("Stealth Mode On"); AudioSelection="VA60";}
       // set team settings
-      if(readtxt.toInt()==701) {Serial.println("Free For All"); SetTeam=0; AudioSelection="VA4W";}
+      if(readtxt.toInt()==701) {Serial.println("Free For All"); SetTeam=0; SetFF=1; AudioSelection="VA30";}
       if(readtxt.toInt()==702) {Serial.println("Teams Mode Two Teams (odds/evens)"); if (GunID % 2) {SetTeam=0; AudioSelection="VA13";} else {SetTeam=1; AudioSelection="VA1L";}}
-      if(readtxt.toInt()==705) {Serial.println("Teams Mode Player's Choice"); settingsallowed=3; SetTeam=100; AudioSelection="VA5E";} // this one allows for manual input of settings... each gun will need to select a team now
+      if(readtxt.toInt()==703) {Serial.println("Teams Mode Player's Choice"); settingsallowed=3; SetTeam=100; AudioSelection="VA5E";} // this one allows for manual input of settings... each gun will need to select a team now
       // setting game time
       if(readtxt.toInt()==801) {GameMode=1; Serial.println("Game mode set to Deathmatch"); AudioSelection="VA26";}
       if(readtxt.toInt()==802) {GameMode=2; Serial.println("Game mode set to Capture the Flag"); AudioSelection="VA8P";}
@@ -936,7 +945,7 @@ void serialTask(void * params){
       if(readtxt.toInt()==807) {GameMode=7; Serial.println("Game mode set to You only live twice"); AudioSelection="VA8I";}
       if(readtxt.toInt()==808) {GameMode=8; Serial.println("Game mode set to One Shot Kills"); AudioSelection="VA8K";}
       if(readtxt.toInt()==809) {GameMode=9; Serial.println("Game mode set to Gun Game"); AudioSelection="VA9T";}
-      if(readtxt.toInt()==810) {GameMode=10; Serial.println("Game mode set to One Domination"); AudioSelection="VA5C";}
+      if(readtxt.toInt()==810) {GameMode=10; Serial.println("Game mode set to One Domination"); AudioSelection="VA21";}
       if(readtxt.toInt()==811) {GameMode=11; Serial.println("Game mode set to Battle Royale"); AudioSelection="VA8J";}
       // Setting Respawn Settings
       if(readtxt.toInt()==901) {SetRSPNMode=1; Serial.println("Respawn Set to Immediate"); AudioSelection="VA54";}
@@ -966,7 +975,7 @@ void serialTask(void * params){
       if(readtxt.toInt()==1201) {SetGNDR=1; Serial.println("Gender set to Female"); AudioSelection="VBI";}
       // setting friendly fire mode
       if(readtxt.toInt()==1300) {UNLIMITEDAMMO=true; Serial.println("Ammo set to unlimited"); AudioSelection="VA6V";}
-      if(readtxt.toInt()==1400) {UNLIMITEDAMMO=false; Serial.println("Ammo set to limited"); AudioSelection="VA14";}
+      if(readtxt.toInt()==1301) {UNLIMITEDAMMO=false; Serial.println("Ammo set to limited"); AudioSelection="VA14";}
       // setting Auto ammo replenish mode
       if(readtxt.toInt()==1401) {SetFF=1; Serial.println("Friendly Fire On"); AudioSelection="VA32";}
       if(readtxt.toInt()==1400) {SetFF=0; Serial.println("Friendly Fire Off"); AudioSelection="VA31";}
@@ -1048,7 +1057,8 @@ void loop() {
     
     // here we put in processes to run based upon conditions to make a game function
 
-    if (settingsallowed>0) {settingsallowed1==settingsallowed; getsettings();} // this is triggered if a manual option is required for game settings
+    if (settingsallowed1==3) {Serial.println("Team Settings requested"); delay(250); GETTEAM=true; getsettings(); settingsallowed1=0; }
+    if (settingsallowed>0) {Serial.println("manual settings requested"); settingsallowed1=settingsallowed;} // this is triggered if a manual option is required for game settings
     if (EXITSETTINGS) {exitgetsettings();} // this ends get settings mode
     if (RESPAWN) { // checks if respawn was triggered to respawn a player
       respawnplayer(); // respawns player
