@@ -22,7 +22,8 @@
  *  4/3/2020 - Jay - added blynk write commands
  *  4/3/2020 - Jay - Reconfigured sketch for running on local blynk server
  *  4/8/2020 - Jay - Added volume control for taggers, also added battle royale mode selection for future use
- *  
+ *  4/10/2020 - Jay - Added serial print indicators to troubleshoot the receiving of data from esp32, having trouble processing data properly
+ *  4/10/2020 - Jay - Cleaned up LCD printing data and added variables for desired status updates for LCD
  */ 
 
 /* 
@@ -278,29 +279,64 @@ if (SerialLCD.available()) {
       index++;
       ptr = strtok(NULL, ",");  // takes a list of delimiters
     }
+    //ammo,weap,health,armor,shield,lives,magazineammo,GunID
+    Serial.println("Data Recieved from ESP32");
     lcd.clear();
+
     lcd.setCursor(0,0);
+    lcd.print("ID:");
+    Serial.println("Player ID: " + String(tokenStrings[8]));
+    lcd.print(tokenStrings[7]);
+
+    lcd.setCursor(8,0);
     lcd.print("Ammo:");
-    Serial.println("Ammo: " + String(tokenStrings[0]));
+    Serial.println("Ammo: " + String(tokenStrings[0]) + "/" + String(tokenStrings[6]));
     lcd.print(tokenStrings[0]);
-    lcd.setCursor(10,0);
-    lcd.print("Health:");
-    Serial.println("HP: " + String(tokenStrings[2]));
-    lcd.print(tokenStrings[2]);
+    lcd.print("/");
+    lcd.print(tokenStrings[6]);
+
     lcd.setCursor(0,1);
-    lcd.print("Armor:");
-    lcd.print(tokenStrings[3]);
+    lcd.print("Weap:");
+    if(tokenStrings[2] == "1") {lcd.print("Unarmed");}
+    if(tokenStrings[2] == "2") {lcd.print("AMR");}
+    if(tokenStrings[2] == "3") {lcd.print("Assault Rifle");}
+    if(tokenStrings[2] == "4") {lcd.print("Bolt Rifle");}
+    if(tokenStrings[2] == "5") {lcd.print("Burst Rifle");}
+    if(tokenStrings[2] == "6") {lcd.print("Charge Rifle");}
+    if(tokenStrings[2] == "7") {lcd.print("Enrg Launcher");}
+    if(tokenStrings[2] == "8") {lcd.print("Enrg Rifle");}
+    if(tokenStrings[2] == "9") {lcd.print("Force Rifle");}
+    if(tokenStrings[2] == "10") {lcd.print("Ion Sniper");}
+    if(tokenStrings[2] == "11") {lcd.print("Laser Cannon");}
+    if(tokenStrings[2] == "12") {lcd.print("Plsm Sniper");}
+    if(tokenStrings[2] == "13") {lcd.print("Rail Gun");}
+    if(tokenStrings[2] == "14") {lcd.print("Rckt Launcher");}
+    if(tokenStrings[2] == "15") {lcd.print("Shotgun");}
+    if(tokenStrings[2] == "16") {lcd.print("SMG");}
+    if(tokenStrings[2] == "17") {lcd.print("Sniper Rifle");}
+    if(tokenStrings[2] == "18") {lcd.print("Stinger");}
+    if(tokenStrings[2] == "19") {lcd.print("Suppressor");}
+    
     lcd.setCursor(0,2);
+    lcd.print("HP:");
+    Serial.println("Health: " + String(tokenStrings[2]));
+    lcd.print(tokenStrings[2]);
+    lcd.setCursor(8,2);
+    lcd.print("Armr:");
+    lcd.print(tokenStrings[3]);
     Serial.println("Armor: " + String(tokenStrings[3]));
-    lcd.print("Shiled:");
+
+    
+    lcd.setCursor(0,3);
+    lcd.print("Shld:");
     lcd.print(tokenStrings[4]);
     Serial.println("Shield: " + String(tokenStrings[4]));
-    lcd.setCursor(0,3);
+    lcd.setCursor(8,3);
     lcd.print("Lives:");
     tokenStrings[5] = tokenStrings[5] + "\0";
     lcd.print(tokenStrings[5]);
     Serial.println("Lives: " + String(tokenStrings[5]));
-    //ammo,weap,health,armor,shield,lives
+    //ammo,weap,health,armor,shield,lives,magazineammo,GunID
   }
 }
 //****************************************************************
@@ -610,5 +646,4 @@ void loop()
 {
   Blynk.run();
   ESP32Read.run();
-  //ESP32Send.run();
 }
