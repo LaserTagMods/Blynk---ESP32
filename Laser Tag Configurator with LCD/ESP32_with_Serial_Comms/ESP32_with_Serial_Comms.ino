@@ -14,6 +14,7 @@
  * updated 4/9/2020 fixed audio announcement for domination to read control point versus select a game
  * updated 4/9/2020 fixed limited ammo, wasnt allowing limited ammo due to incrorrect if then statement setting
  * updated 4/9/2020 fixed the manual team selection option to enable players to pick their own teams
+ * updated 4/10/2020 enabled LCD data sending to esp8266, updated data to be sent to get lives, weapon and other correct indicators sent to the LCD
  * 
  *
  *
@@ -305,16 +306,19 @@ String AudioSelection1; // used to play stored audio files with tagger FOR BLE C
 int lastTaggedPlayer = -1;  // used to capture player id who last shot gun, for kill count attribution
 int lastTaggedTeam = -1;  // used to captures last player team who shot gun, for kill count attribution
 
-int ammo = 0;
+// used to send to ESP8266 for LCD display
+int ammo1 = 0;
+int ammo2 = 0;
 int weap = 0;
 int health = 0;
 int armor = 0;
 int shield =0;
-int lives = 0;
+
 
 bool RESPAWN = false; // trigger to enable auto respawn when killed in game
 bool GAMEOVER = false; // used to trigger game over and boot a gun out of play mode
-bool TAGGERUPDATE = false; // used to trigger sending data to ESP8266
+bool TAGGERUPDATE = false; // used to trigger sending data to ESP8266 used for BLE core
+bool TAGGERUPDATE1 = false; // used to turn off BLE core lcd send data trigger
 bool AUDIO = false; // used to trigger an audio on tagger FOR SERIAL CORE
 bool AUDIO1 = false; // used to trigger an audio on tagger FOR BLE CORE
 bool GAMESTART = false; // used to trigger game start
@@ -417,7 +421,8 @@ static void notifyCallback(
         space 6 is "is critical" if critical a damage multiplier would apply, rare.
         space 7 is "power", not sure what that does.*/
       //been tagged
-      //TAGGERUPDATE=true;
+      TAGGERUPDATE=true;
+      Serial.println("Enabled LCD Data Send");
       lastTaggedPlayer = tokenStrings[3].toInt();
       lastTaggedTeam = tokenStrings[4].toInt();
       Serial.println("Just tagged by: " + String(lastTaggedPlayer) + " on team: " + String(lastTaggedTeam));
@@ -438,7 +443,12 @@ static void notifyCallback(
        *  
        *  more can be done with this, like using the ammo info to post to lcd
        */
-       //TAGGERUPDATE=true;
+       ammo1 = tokenStrings[2].toInt(); // sets the variable to be sent to esp8266 for ammo in clip
+       ammo2 = tokenStrings[5].toInt(); // sets the total magazine capacity to be sent to 8266
+       if (tokenStrings[4].toInt() == 0) {weap=SetSlotA;} // if the weapon slot 0 is loaded up, sets the variable to notify weapon type loaded to the right weapon
+       else {weap=SetSlotB;} // same thing but for weapon slot 1
+       TAGGERUPDATE=true;
+       Serial.println("Enabled LCD Data Send");
        if(UNLIMITEDAMMO) {
          if ((tokenStrings[2] == "0") && (tokenStrings[4] == "0")) { // yes thats right folks... if we are out of ammo we set that cool trigger variable
            if ((tokenStrings[3] == "0")) {
@@ -460,10 +470,11 @@ static void notifyCallback(
       /*health status update occured
        * can be used for updates on health as well as death occurance
        */
-      //TAGGERUPDATE=true;
-      health = tokenStrings[1].toInt();
-      armor = tokenStrings[2].toInt();
-      shield = tokenStrings[3].toInt();
+      TAGGERUPDATE=true;
+      Serial.println("Enabled LCD Data Send");
+      health = tokenStrings[1].toInt(); // setting variable to be sent to esp8266
+      armor = tokenStrings[2].toInt(); // setting variable to be sent to esp8266
+      shield = tokenStrings[3].toInt(); // setting variable to be sent to esp8266
       if ((tokenStrings[1] == "0") && (tokenStrings[2] == "0") && (tokenStrings[3] == "0")) {
         PlayerKillCount[lastTaggedPlayer]++; // adding a point to the last player who killed us
         TeamKillCount[lastTaggedTeam]++; // adding a point to the team who caused the last kill
@@ -890,10 +901,13 @@ void serialTask(void * params){
     if (settingsallowed1>0) {settingsallowed=0;} // checking that a trigger was set from other core, if so, disabling it on this core
     if (TurnOffAudio) {AUDIO=false; AudioPlayCounter=0;}
     if (TAGGERUPDATE){
-      String LCDText = String(ammo)+","+String(weap)+","+String(health)+","+String(armor)+","+String(shield)+","+String(lives);
+      Serial.println("Disabled LCD Data Send for BLE Core Triggered");
+      TAGGERUPDATE1=true;
+      String LCDText = String(ammo1)+","+String(weap)+","+String(health)+","+String(armor)+","+String(shield)+","+String(PlayerLives)+","+String(ammo2)+","+String(GunID);
       SerialLCD.println(LCDText);
-      TAGGERUPDATE=false;
-    }
+      Serial.println("Sent LCD data to ESP8266");
+      delay(100);
+    } else {TAGGERUPDATE1=false;}
      if(SerialLCD.available()){
       String readtxt = SerialLCD.readStringUntil('\n');
       Serial.println(readtxt);
@@ -1057,6 +1071,7 @@ void loop() {
     
     // here we put in processes to run based upon conditions to make a game function
 
+    if (TAGGERUPDATE1) {TAGGERUPDATE=false; Serial.println("Disabled LCD Data Send");}
     if (settingsallowed1==3) {Serial.println("Team Settings requested"); delay(250); GETTEAM=true; getsettings(); settingsallowed1=0; }
     if (settingsallowed>0) {Serial.println("manual settings requested"); settingsallowed1=settingsallowed;} // this is triggered if a manual option is required for game settings
     if (EXITSETTINGS) {exitgetsettings();} // this ends get settings mode
