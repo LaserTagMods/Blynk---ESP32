@@ -24,6 +24,7 @@
  *  4/8/2020 - Jay - Added volume control for taggers, also added battle royale mode selection for future use
  *  4/10/2020 - Jay - Added serial print indicators to troubleshoot the receiving of data from esp32, having trouble processing data properly
  *  4/10/2020 - Jay - Cleaned up LCD printing data and added variables for desired status updates for LCD
+ *  4/11/2020 - Jay - Fixed serial read function by adjusting array size for stings received
  */ 
 
 /* 
@@ -245,7 +246,7 @@ int lcdRows = 4;
 
 // Variables needed:
 int ToESP32=0;
-String tokenStrings[6];
+String tokenStrings[8];
 unsigned long startt = millis();
 
 // timers for running certain applications periodically with the blynk program
