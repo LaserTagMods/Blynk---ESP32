@@ -16,7 +16,7 @@
  * updated 4/9/2020 fixed the manual team selection option to enable players to pick their own teams
  * updated 4/10/2020 enabled LCD data sending to esp8266, updated data to be sent to get lives, weapon and other correct indicators sent to the LCD
  * updated 4/13/2020 worked on more LCD debuging issues for sending correct data to LCD ESP8266
- *
+ * updated 4/14/2020 adding Bluetooth power level adjustment to try and get better connection stability
  *
  * Written by Jay Burden
  *
@@ -1021,13 +1021,30 @@ void setup() {
   // Retrieve a Scanner and set the callback we want to use to be informed when we
   // have detected a new device.  Specify that we want active scanning and start the
   // scan to run for 5 seconds.
+
+/**
+ * bledevice::setPower(Powerlevel);
+ * @brief Set the transmission power.
+ * The power level can be one of:
+ * * ESP_PWR_LVL_N14
+ * * ESP_PWR_LVL_N11
+ * * ESP_PWR_LVL_N8
+ * * ESP_PWR_LVL_N5
+ * * ESP_PWR_LVL_N2
+ * * ESP_PWR_LVL_P1
+ * * ESP_PWR_LVL_P4
+ * * ESP_PWR_LVL_P7
+ * @param [in] powerLevel.
+ */
+
+  BLEDevice::setPower(ESP_PWR_LVL_P1);
   BLEScan* pBLEScan = BLEDevice::getScan();
   pBLEScan->setAdvertisedDeviceCallbacks(new MyAdvertisedDeviceCallbacks());
   pBLEScan->setInterval(1349);
   pBLEScan->setWindow(449);
   pBLEScan->setActiveScan(true);
   pBLEScan->start(10, true);
-  BLEDevice::setPower(ESP_PWR_LVL_N14);
+
 
   pClient  = BLEDevice::createClient();
   pClient->setClientCallbacks(new MyClientCallback());
