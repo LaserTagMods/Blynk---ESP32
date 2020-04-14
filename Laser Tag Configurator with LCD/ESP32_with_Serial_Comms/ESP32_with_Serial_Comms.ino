@@ -15,7 +15,7 @@
  * updated 4/9/2020 fixed limited ammo, wasnt allowing limited ammo due to incrorrect if then statement setting
  * updated 4/9/2020 fixed the manual team selection option to enable players to pick their own teams
  * updated 4/10/2020 enabled LCD data sending to esp8266, updated data to be sent to get lives, weapon and other correct indicators sent to the LCD
- * 
+ * updated 4/13/2020 worked on more LCD debuging issues for sending correct data to LCD ESP8266
  *
  *
  * Written by Jay Burden
@@ -310,9 +310,9 @@ int lastTaggedTeam = -1;  // used to captures last player team who shot gun, for
 int ammo1 = 0;
 int ammo2 = 0;
 int weap = 0;
-int health = 0;
-int armor = 0;
-int shield =0;
+int health = 45;
+int armor = 70;
+int shield =70;
 
 
 bool RESPAWN = false; // trigger to enable auto respawn when killed in game
@@ -443,15 +443,15 @@ static void notifyCallback(
        *  
        *  more can be done with this, like using the ammo info to post to lcd
        */
-       ammo1 = tokenStrings[2].toInt(); // sets the variable to be sent to esp8266 for ammo in clip
-       ammo2 = tokenStrings[5].toInt(); // sets the total magazine capacity to be sent to 8266
-       if (tokenStrings[4].toInt() == 0) {weap=SetSlotA;} // if the weapon slot 0 is loaded up, sets the variable to notify weapon type loaded to the right weapon
-       else {weap=SetSlotB;} // same thing but for weapon slot 1
+       ammo1 = tokenStrings[1].toInt(); // sets the variable to be sent to esp8266 for ammo in clip
+       ammo2 = tokenStrings[4].toInt(); // sets the total magazine capacity to be sent to 8266
+       if (tokenStrings[3].toInt() == 0) {weap=SetSlotA;} // if the weapon slot 0 is loaded up, sets the variable to notify weapon type loaded to the right weapon
+       if (tokenStrings[3].toInt() == 1) {weap=SetSlotB;} // same thing but for weapon slot 1
        TAGGERUPDATE=true;
        Serial.println("Enabled LCD Data Send");
        if(UNLIMITEDAMMO) {
-         if ((tokenStrings[2] == "0") && (tokenStrings[4] == "0")) { // yes thats right folks... if we are out of ammo we set that cool trigger variable
-           if ((tokenStrings[3] == "0")) {
+         if ((tokenStrings[1] == "0") && (tokenStrings[4] == "0")) { // yes thats right folks... if we are out of ammo we set that cool trigger variable
+           if ((tokenStrings[4] == "0")) {
              OutofAmmoA=true; // here is the variable for weapon slot 0
              }
              else {
@@ -733,8 +733,10 @@ void playersettings() {
   // We really are only messing with Gender and Team though
   // Gender is determined by the audio call outs listed, tokens 9 and on
   // male is default as 0, female is 1
+  // health = 45; armor = 70; shield =70;
+  
   if (SetTeam=100) {
-    if(SetGNDR == 0) {sendString("$PSET,"+String(GunID)+","+String(Team)+",45,70,70,50,,H44,JAD,V33,V3I,V3C,V3G,V3E,V37,H06,H55,H13,H21,H02,U15,W71,A10,*");}
+    if(SetGNDR == 0) {sendString("$PSET,"+String(GunID)+","+String(Team)+","+String(health)+","+String(armor)+","+String(shield)+",50,,H44,JAD,V33,V3I,V3C,V3G,V3E,V37,H06,H55,H13,H21,H02,U15,W71,A10,*");}
     else {sendString("$PSET,"+String(GunID)+","+String(Team)+",45,70,70,50,,H44,JAD,VB3,VBI,VBC,VBG,VBE,VB7,H06,H55,H13,H21,H02,U15,W71,A10,*");}
   } else{
   if(SetGNDR == 0) {sendString("$PSET,"+String(GunID)+","+String(SetTeam)+",45,70,70,50,,H44,JAD,V33,V3I,V3C,V3G,V3E,V37,H06,H55,H13,H21,H02,U15,W71,A10,*");}
@@ -904,6 +906,7 @@ void serialTask(void * params){
       Serial.println("Disabled LCD Data Send for BLE Core Triggered");
       TAGGERUPDATE1=true;
       String LCDText = String(ammo1)+","+String(weap)+","+String(health)+","+String(armor)+","+String(shield)+","+String(PlayerLives)+","+String(ammo2)+","+String(GunID);
+      Serial.println(LCDText);
       SerialLCD.println(LCDText);
       Serial.println("Sent LCD data to ESP8266");
       delay(100);
