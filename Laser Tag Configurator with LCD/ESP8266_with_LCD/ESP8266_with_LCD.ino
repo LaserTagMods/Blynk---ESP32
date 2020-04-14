@@ -24,7 +24,7 @@
  *  4/8/2020 - Jay - Added volume control for taggers, also added battle royale mode selection for future use
  *  4/10/2020 - Jay - Added serial print indicators to troubleshoot the receiving of data from esp32, having trouble processing data properly
  *  4/10/2020 - Jay - Cleaned up LCD printing data and added variables for desired status updates for LCD
- *  4/11/2020 - Jay - Fixed serial read function by adjusting array size for stings received
+ *  4/13/2020 - Jay - Cleaned up LCD printing data even more in debuging data sent to LCD
  */ 
 
 /* 
@@ -247,6 +247,15 @@ int lcdRows = 4;
 // Variables needed:
 int ToESP32=0;
 String tokenStrings[8];
+/*
+ * edited out for alternate conrols
+long gametime=2000000000; // used as a timer for games
+long gamestart=0; // used as a start for a game
+long gamedelay=4000; // sets min delay for start a game time accumulation, only add to this value
+*/
+
+bool GAMESTART=false;
+
 unsigned long startt = millis();
 
 // timers for running certain applications periodically with the blynk program
@@ -282,6 +291,7 @@ if (SerialLCD.available()) {
     }
     //ammo,weap,health,armor,shield,lives,magazineammo,GunID
     Serial.println("Data Recieved from ESP32");
+    Serial.println(tokenStrings[0]+","+tokenStrings[1]+","+tokenStrings[2]+","+tokenStrings[3]+","+tokenStrings[4]+","+tokenStrings[5]+","+tokenStrings[6]+","+tokenStrings[7]);
     lcd.clear();
 
     lcd.setCursor(0,0);
@@ -298,25 +308,25 @@ if (SerialLCD.available()) {
 
     lcd.setCursor(0,1);
     lcd.print("Weap:");
-    if(tokenStrings[2] == "1") {lcd.print("Unarmed");}
-    if(tokenStrings[2] == "2") {lcd.print("AMR");}
-    if(tokenStrings[2] == "3") {lcd.print("Assault Rifle");}
-    if(tokenStrings[2] == "4") {lcd.print("Bolt Rifle");}
-    if(tokenStrings[2] == "5") {lcd.print("Burst Rifle");}
-    if(tokenStrings[2] == "6") {lcd.print("Charge Rifle");}
-    if(tokenStrings[2] == "7") {lcd.print("Enrg Launcher");}
-    if(tokenStrings[2] == "8") {lcd.print("Enrg Rifle");}
-    if(tokenStrings[2] == "9") {lcd.print("Force Rifle");}
-    if(tokenStrings[2] == "10") {lcd.print("Ion Sniper");}
-    if(tokenStrings[2] == "11") {lcd.print("Laser Cannon");}
-    if(tokenStrings[2] == "12") {lcd.print("Plsm Sniper");}
-    if(tokenStrings[2] == "13") {lcd.print("Rail Gun");}
-    if(tokenStrings[2] == "14") {lcd.print("Rckt Launcher");}
-    if(tokenStrings[2] == "15") {lcd.print("Shotgun");}
-    if(tokenStrings[2] == "16") {lcd.print("SMG");}
-    if(tokenStrings[2] == "17") {lcd.print("Sniper Rifle");}
-    if(tokenStrings[2] == "18") {lcd.print("Stinger");}
-    if(tokenStrings[2] == "19") {lcd.print("Suppressor");}
+    if(tokenStrings[1] == "1") {lcd.print("Unarmed");}
+    if(tokenStrings[1] == "2") {lcd.print("AMR");}
+    if(tokenStrings[1] == "3") {lcd.print("Assault Rifle");}
+    if(tokenStrings[1] == "4") {lcd.print("Bolt Rifle");}
+    if(tokenStrings[1] == "5") {lcd.print("Burst Rifle");}
+    if(tokenStrings[1] == "6") {lcd.print("Charge Rifle");}
+    if(tokenStrings[1] == "7") {lcd.print("Enrg Launcher");}
+    if(tokenStrings[1] == "8") {lcd.print("Enrg Rifle");}
+    if(tokenStrings[1] == "9") {lcd.print("Force Rifle");}
+    if(tokenStrings[1] == "10") {lcd.print("Ion Sniper");}
+    if(tokenStrings[1] == "11") {lcd.print("Laser Cannon");}
+    if(tokenStrings[1] == "12") {lcd.print("Plsm Sniper");}
+    if(tokenStrings[1] == "13") {lcd.print("Rail Gun");}
+    if(tokenStrings[1] == "14") {lcd.print("Rckt Launcher");}
+    if(tokenStrings[1] == "15") {lcd.print("Shotgun");}
+    if(tokenStrings[1] == "16") {lcd.print("SMG");}
+    if(tokenStrings[1] == "17") {lcd.print("Sniper Rifle");}
+    if(tokenStrings[1] == "18") {lcd.print("Stinger");}
+    if(tokenStrings[1] == "19") {lcd.print("Suppressor");}
     
     lcd.setCursor(0,2);
     lcd.print("HP:");
@@ -500,6 +510,16 @@ if (b==0) {ToESP32=400; SendESP32Data(); Serial.println("Lives is set to Unlimit
 // Sets Game Time
 BLYNK_WRITE(V5) {
 int b=param.asInt();
+/*
+if (b==1) {ToESP32=501; SendESP32Data(); Serial.println("Game Time is set to 1 Minute"); gametime=60000+gamedelay;}
+if (b==2) {ToESP32=502; SendESP32Data(); Serial.println("Game Time is set to 5 Minutes"); gametime=300000+gamedelay;}
+if (b==3) {ToESP32=503; SendESP32Data(); Serial.println("Game Time is set to 10 Minutes"); gametime=600000+gamedelay;}
+if (b==4) {ToESP32=504; SendESP32Data(); Serial.println("Game Time is set to 15 Minutes"); gametime=900000+gamedelay;}
+if (b==5) {ToESP32=505; SendESP32Data(); Serial.println("Game Time is set to 20 Minutes"); gametime=1200000+gamedelay;}
+if (b==6) {ToESP32=506; SendESP32Data(); Serial.println("Game Time is set to 25 Minutes"); gametime=1500000+gamedelay;}
+if (b==7) {ToESP32=507; SendESP32Data(); Serial.println("Game Time is set to 30 Minutes"); gametime=1800000+gamedelay;}
+if (b==8) {ToESP32=508; SendESP32Data(); Serial.println("Game Time is set to Unlimited"); gametime=2000000000+gamedelay;}
+*/
 if (b==1) {ToESP32=501; SendESP32Data(); Serial.println("Game Time is set to 1 Minute");}
 if (b==2) {ToESP32=502; SendESP32Data(); Serial.println("Game Time is set to 5 Minutes");}
 if (b==3) {ToESP32=503; SendESP32Data(); Serial.println("Game Time is set to 10 Minutes");}
@@ -611,6 +631,7 @@ BLYNK_WRITE(V16) {
 int b=param.asInt();
 if (b==0) {ToESP32=1600; SendESP32Data(); Serial.println("Start Game is set to unpressed");}
 if (b==1) {ToESP32=1601; SendESP32Data(); Serial.println("Start Game is set to pressed");}
+// if (b==1) {ToESP32=1601; SendESP32Data(); Serial.println("Start Game is set to pressed"); GAMESTART=true; gamestart=millis();}
 }
 //*****************************************************************************************
 //*****************************************************************************************
@@ -638,13 +659,24 @@ void setup()
 //****************************  UPDATE THIS SECTION!!!!! ***************************
 //**********************************************************************************
 
-  // timer settings
+  // timer settings (currently not used)
   ESP32Read.setInterval(1L, ReadESP32Data); // Reading data from esp32 constantly
-  ESP32Send.setInterval(5000L, SendESP32Data); // sending commands to esp32 every five seconds
+  // ESP32Send.setInterval(5000L, SendESP32Data); // sending commands to esp32 every five seconds
 }
 
 void loop()
 {
   Blynk.run();
   ESP32Read.run();
+  /*
+   *  edited out as an alternate method for ignoring blynk in game mode
+   /// while (GAMESTART) {
+    // if ((millis()-gamestart) < gametime) {
+      // ReadESP32Data();
+      // Serial.println("reading");
+    // } else {
+      // GAMESTART=false;
+    // }
+  // }
+  */
 }
