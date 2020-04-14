@@ -1035,6 +1035,11 @@ void setup() {
  * * ESP_PWR_LVL_P4
  * * ESP_PWR_LVL_P7
  * @param [in] powerLevel.
+
+esp_err_t errRc=esp_ble_tx_power_set(ESP_BLE_PWR_TYPE_DEFAULT,ESP_PWR_LVL_P9);
+esp_ble_tx_power_set(ESP_BLE_PWR_TYPE_ADV, ESP_PWR_LVL_P9);
+ esp_ble_tx_power_set(ESP_BLE_PWR_TYPE_SCAN ,ESP_PWR_LVL_P9); 
+
  */
 
   BLEDevice::setPower(ESP_PWR_LVL_P1);
