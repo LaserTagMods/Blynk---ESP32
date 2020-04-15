@@ -16,7 +16,8 @@
  * updated 4/9/2020 fixed the manual team selection option to enable players to pick their own teams
  * updated 4/10/2020 enabled LCD data sending to esp8266, updated data to be sent to get lives, weapon and other correct indicators sent to the LCD
  * updated 4/13/2020 worked on more LCD debuging issues for sending correct data to LCD ESP8266
- * updated 4/14/2020 adding Bluetooth power level adjustment to try and get better connection stability
+ * updated 4/14/2020 changed power output for the BLE antenna to try to minimize disconnects, was successful
+ *
  *
  * Written by Jay Burden
  *
@@ -507,8 +508,8 @@ class MyClientCallback : public BLEClientCallbacks {
     void onDisconnect(BLEClient* pclient) {
       connected = false;
       doConnect = true;
-      doScan = true;
-      WEAP = false;
+      doScan = true; // enables scaning for designated BLE server (tagger)
+      // WEAP = false; used to trigger sending game start commands to tagger
       Serial.println("onDisconnect");
 
     }
@@ -1022,7 +1023,9 @@ void setup() {
   // have detected a new device.  Specify that we want active scanning and start the
   // scan to run for 5 seconds.
 
-/**
+  /**
+ * notes from possible ways to increase output power
+ * 
  * bledevice::setPower(Powerlevel);
  * @brief Set the transmission power.
  * The power level can be one of:
@@ -1035,14 +1038,16 @@ void setup() {
  * * ESP_PWR_LVL_P4
  * * ESP_PWR_LVL_P7
  * @param [in] powerLevel.
-
-esp_err_t errRc=esp_ble_tx_power_set(ESP_BLE_PWR_TYPE_DEFAULT,ESP_PWR_LVL_P9);
-esp_ble_tx_power_set(ESP_BLE_PWR_TYPE_ADV, ESP_PWR_LVL_P9);
- esp_ble_tx_power_set(ESP_BLE_PWR_TYPE_SCAN ,ESP_PWR_LVL_P9); 
-
+ * esp_err_t errRc=esp_ble_tx_power_set(ESP_BLE_PWR_TYPE_DEFAULT,ESP_PWR_LVL_P9);
+ * esp_ble_tx_power_set(ESP_BLE_PWR_TYPE_ADV, ESP_PWR_LVL_P9);
+ * esp_ble_tx_power_set(ESP_BLE_PWR_TYPE_SCAN ,ESP_PWR_LVL_P9); 
  */
 
-  BLEDevice::setPower(ESP_PWR_LVL_P1);
+  esp_err_t errRc=esp_ble_tx_power_set(ESP_BLE_PWR_TYPE_DEFAULT,ESP_PWR_LVL_P7); // updated version 4/14/2020
+  esp_ble_tx_power_set(ESP_BLE_PWR_TYPE_ADV, ESP_PWR_LVL_P7); // updated version 4/14/2020
+  esp_ble_tx_power_set(ESP_BLE_PWR_TYPE_SCAN ,ESP_PWR_LVL_P7); // updated version 4/14/2020
+  BLEDevice::setPower(ESP_PWR_LVL_P7);
+  //BLEDevice::setPower(ESP_PWR_LVL_N14); // old version
   BLEScan* pBLEScan = BLEDevice::getScan();
   pBLEScan->setAdvertisedDeviceCallbacks(new MyAdvertisedDeviceCallbacks());
   pBLEScan->setInterval(1349);
@@ -1081,7 +1086,7 @@ void loop() {
   if (doConnect == true) {
     if (connectToServer()) {
       Serial.println("We are now connected to the BLE Server.");
-      doConnect = false; // to try and make the connection again.
+      doConnect = false; // stop trying to make the connection.
     } else {
       Serial.println("We have failed to connect to the server; there is nothin more we will do.");
     }
@@ -1125,10 +1130,10 @@ void loop() {
     }
 //************************************************************************************
   } else if (doScan) {
-    if (millis() - startScan > 11000) {
+    if (millis() - startScan > 5000) {
       Serial.println("Scanning again");
       BLEDevice::init("");
-      BLEDevice::getScan()->start(10, true); // this is just eample to start scan after disconnect, most likely there is better way to do it in arduino
+      BLEDevice::getScan()->start(10, true); // this is just example to start scan after disconnect, most likely there is better way to do it in arduino
       startScan = millis();
     }
   }
