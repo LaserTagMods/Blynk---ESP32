@@ -17,6 +17,7 @@
  * updated 4/10/2020 enabled LCD data sending to esp8266, updated data to be sent to get lives, weapon and other correct indicators sent to the LCD
  * updated 4/13/2020 worked on more LCD debuging issues for sending correct data to LCD ESP8266
  * updated 4/14/2020 changed power output for the BLE antenna to try to minimize disconnects, was successful
+ * updated 4/15/2020 fixed unlimited ammo when unarmed, was looping non stop for reloading because no ammo on unarmed
  *
  *
  * Written by Jay Burden
@@ -286,6 +287,7 @@ int SetRSPNMode; // used to set auto or manual respawns from bases/ir (future)
 int SetObj=32000; // used to program objectives
 int SetFF=1; // set game to friendly fire on/off (default is on)
 int SetVol=65; // set tagger volume adjustment, default is 65
+int CurrentWeapSlot; // used for indicating what weapon slot is being used, primarily for unlimited ammo
 
 int Team=0; // team selection used when allowed for custom configuration
 int MaxKills = 32000; // setting limit on kill counts
@@ -436,27 +438,31 @@ static void notifyCallback(
 // ****** note i still need to assign the ammo to the lcd outputs********
     if (tokenStrings[0] == "$ALCD") {
       /* ammunition status update occured 
-       *  space 2 is rounds remaining in clip
-       *  space 3 is accuracy of weapon
-       *  space 4 is slot of weapon
-       *  space 5 is remaining ammo outside clip
-       *  space 6 is the overheating feature if aplicable
+       *  space 0 is ALCD indicator
+       *  space 1 is rounds remaining in clip
+       *  space 2 is accuracy of weapon
+       *  space 3 is slot of weapon
+       *  space 4 is remaining ammo outside clip
+       *  space 5 is the overheating feature if aplicable
        *  
        *  more can be done with this, like using the ammo info to post to lcd
        */
        ammo1 = tokenStrings[1].toInt(); // sets the variable to be sent to esp8266 for ammo in clip
        ammo2 = tokenStrings[4].toInt(); // sets the total magazine capacity to be sent to 8266
-       if (tokenStrings[3].toInt() == 0) {weap=SetSlotA;} // if the weapon slot 0 is loaded up, sets the variable to notify weapon type loaded to the right weapon
-       if (tokenStrings[3].toInt() == 1) {weap=SetSlotB;} // same thing but for weapon slot 1
+       if (tokenStrings[3].toInt() == 0) {weap=SetSlotA; CurrentWeapSlot=0;} // if the weapon slot 0 is loaded up, sets the variable to notify weapon type loaded to the right weapon
+       if (tokenStrings[3].toInt() == 1) {weap=SetSlotB; CurrentWeapSlot=1;} // same thing but for weapon slot 1
+       if (tokenStrings[3].toInt() == 2) {CurrentWeapSlot=4;}
        TAGGERUPDATE=true;
        Serial.println("Enabled LCD Data Send");
-       if(UNLIMITEDAMMO) {
-         if ((tokenStrings[1] == "0") && (tokenStrings[4] == "0")) { // yes thats right folks... if we are out of ammo we set that cool trigger variable
-           if ((tokenStrings[4] == "0")) {
+       if(UNLIMITEDAMMO) { // checking if unlimited ammo is on or not
+         if (ammo1 < 1 && ammo2 < 1 && weap != 1) { // if we are out of ammo on the current slot and we are not unarmed, we set that cool trigger variable
+           if (CurrentWeapSlot == 0) {
              OutofAmmoA=true; // here is the variable for weapon slot 0
+             Serial.println("Weapon Slot 0 is out of ammo, enabling weapon reload");
              }
-             else {
+           if (CurrentWeapSlot == 1) {
                OutofAmmoB=true; // trigger variable for weapon slot 1
+               Serial.println("Weapon Slot 0 is out of ammo, enabling weapon reload");
                }
             }
           }    
@@ -1123,10 +1129,14 @@ void loop() {
       GAMESTART = false;
     }
     if (OutofAmmoA) {
-      weaponsettingsA();
+      weaponsettingsA();      
+      Serial.println("Weapon Slot 0 has been reloaded, disabling reload");
+      OutofAmmoA=false;
     }
     if (OutofAmmoB) {
         weaponsettingsB();
+        Serial.println("Weapon Slot 1 has been reloaded, disabling reload");
+        OutofAmmoB=false;
     }
 //************************************************************************************
   } else if (doScan) {
