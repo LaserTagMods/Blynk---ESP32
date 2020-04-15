@@ -345,7 +345,8 @@ if (SerialLCD.available()) {
     lcd.setCursor(8,3);
     lcd.print("Lives:");
     tokenStrings[5] = tokenStrings[5] + "\0";
-    lcd.print(tokenStrings[5]);
+    if(tokenStrings[5].toInt() < 100) {lcd.print(tokenStrings[5]);}
+    else {lcd.print("Unlimited");}
     Serial.println("Lives: " + String(tokenStrings[5]));
     //ammo,weap,health,armor,shield,lives,magazineammo,GunID
   }
