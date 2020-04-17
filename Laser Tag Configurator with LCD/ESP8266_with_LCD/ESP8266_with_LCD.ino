@@ -25,6 +25,8 @@
  *  4/10/2020 - Jay - Added serial print indicators to troubleshoot the receiving of data from esp32, having trouble processing data properly
  *  4/10/2020 - Jay - Cleaned up LCD printing data and added variables for desired status updates for LCD
  *  4/13/2020 - Jay - Cleaned up LCD printing data even more in debuging data sent to LCD
+ *  4/15/2020 - Jay - Adjusted Ammunition settings to match Blynk update to have three setting options for the option to ensure there are options ;)
+ *  4/16/2020 - Jay - enabled wifi out of range functionality, so that players can leave network and no errors occur in reading and processing data from devices
  */ 
 
 /* 
@@ -610,7 +612,8 @@ if (b==1) {ToESP32=1201; SendESP32Data(); Serial.println("Player Gender is set t
 // Sets Ammo Settings
 BLYNK_WRITE(V13) {
 int b=param.asInt();
-if (b==0) {ToESP32=1300; SendESP32Data(); Serial.println("Ammo Settings is set to Unlimited");}
+if (b==3) {ToESP32=1303; SendESP32Data(); Serial.println("Ammo Settings is set to Ulimited Rounds");}
+if (b==2) {ToESP32=1302; SendESP32Data(); Serial.println("Ammo Settings is set to Unlimited Magazines");}
 if (b==1) {ToESP32=1301; SendESP32Data(); Serial.println("Ammo Settings is set to Limited");}
 }
 
