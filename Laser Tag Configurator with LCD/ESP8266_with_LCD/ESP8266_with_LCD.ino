@@ -27,6 +27,7 @@
  *  4/13/2020 - Jay - Cleaned up LCD printing data even more in debuging data sent to LCD
  *  4/15/2020 - Jay - Adjusted Ammunition settings to match Blynk update to have three setting options for the option to ensure there are options ;)
  *  4/16/2020 - Jay - enabled wifi out of range functionality, so that players can leave network and no errors occur in reading and processing data from devices
+ *  4/19/2020 - Jay - edited game start serial monitor output only
  */ 
 
 /* 
@@ -630,10 +631,10 @@ int b=param.asInt();
 ToESP32 = (1500+b); SendESP32Data(); Serial.println("Volume is set to " + String(ToESP32));
 }
 
-// Starts a game
+// Start/Ends a game
 BLYNK_WRITE(V16) {
 int b=param.asInt();
-if (b==0) {ToESP32=1600; SendESP32Data(); Serial.println("Start Game is set to unpressed");}
+if (b==0) {ToESP32=1600; SendESP32Data(); Serial.println("End Game is set to unpressed");}
 if (b==1) {ToESP32=1601; SendESP32Data(); Serial.println("Start Game is set to pressed");}
 // if (b==1) {ToESP32=1601; SendESP32Data(); Serial.println("Start Game is set to pressed"); GAMESTART=true; gamestart=millis();}
 }
