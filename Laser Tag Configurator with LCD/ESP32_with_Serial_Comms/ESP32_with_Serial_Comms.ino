@@ -19,7 +19,8 @@
  * updated 4/14/2020 changed power output for the BLE antenna to try to minimize disconnects, was successful
  * updated 4/15/2020 fixed unlimited ammo when unarmed, was looping non stop for reloading because no ammo on unarmed
  * updated 4/15/2020 added additional ammunition options, limited, unlimited magazines, and unlimited rounds as options - ulimited rounds more for kids
- *
+ * updated 4/19/2020 improved team selection process, incorporated "End Game" selection (requires app update) disabled buttons/trigger/reload from making noises when pressed upon connection to avoid annoying sounds from players
+ * updated 4/19/2020 enabled player selection for weapon slots 0/1. tested, debugged and ready to go for todays changes.
  *
  * Written by Jay Burden
  *
@@ -276,8 +277,10 @@ char *ptr = NULL;
 // gun settings
 int settingsallowed = 0; // trigger variable used to walk through steps for configuring gun(s) for serial core
 int settingsallowed1 = 0; // trigger variable used to walk through steps for configuring gun(s) for BLE core
-int SetSlotA=2; // this is for weapon slot 0
-int SetSlotB=1; // this is for weapon slot 1
+int SetSlotA=2; // this is for weapon slot 0, default is AMR
+int SLOTA=100; // used when weapon selection is manual
+int SetSlotB=1; // this is for weapon slot 1, default is unarmed
+int SLOTB=100; // used when weapon selection is manual
 int SetLives=32000; // used for configuring lives
 int SetSlotC; // this is for weapon slot 4 or melee used in pickups only (future)
 int SetTeam=0; // used to configure team player settings, default is 0
@@ -329,9 +332,10 @@ bool AUDIO = false; // used to trigger an audio on tagger FOR SERIAL CORE
 bool AUDIO1 = false; // used to trigger an audio on tagger FOR BLE CORE
 bool GAMESTART = false; // used to trigger game start
 bool TurnOffAudio=false; // used to trigger audio off from serial core
-bool EXITSETTINGS=false; // used to escape custom options allowed
 bool GETTEAM=false; // used when configuring customized settings
 bool STATUSCHANGE=false; // used to loop through selectable customized options
+bool GETSLOT0=false; // used for configuring manual weapon selection
+bool GETSLOT1=false; // used for configuring manual weapon selection
 
 long startScan = 0; // part of BLE enabling
 
@@ -406,13 +410,59 @@ static void notifyCallback(
         if (tokenStrings[2] == "0") {
           Serial.println("Trigger Released"); // goes without sayin... you let go of the trigger
           // upon release of a trigger, team settings can be changed if the proper allowance is in place
-          if (GETTEAM){
+          if (GETTEAM){ // used for configuring manual team selection
             if (Team==5) {Team=0; STATUSCHANGE=true; AudioSelection1="VA13"; AUDIO1=true; Serial.println("team changed from 5 to 0");}          
             if (Team==4) {Team=5; AudioSelection1="VA2Y"; AUDIO1=true; Serial.println("team changed from 4 to 5");} // foxtrot team
             if (Team==3) {Team=4; AudioSelection1="VA2G"; AUDIO1=true; Serial.println("team changed from 3 to 4");} // echo team
             if (Team==2) {Team=3; AudioSelection1="VA27"; AUDIO1=true; Serial.println("team changed from 2 to 3");} // delta team
             if (Team==1) {Team=2; AudioSelection1="VA1R"; AUDIO1=true; Serial.println("team changed from 1 to 2");} // charlie team
             if (Team==0 && STATUSCHANGE==false) {Team=1; AudioSelection1="VA1L"; AUDIO1=true; Serial.println("team changed from 0 to 1");} // bravo team        
+            STATUSCHANGE=false;
+          }
+          if (GETSLOT0){ // used for configuring manual team selection
+            if (SLOTA==19) {SLOTA=1; STATUSCHANGE=true; AudioSelection1="VA01"; AUDIO1=true; Serial.println("Weapon changed from 19 to 1");}          
+            if (SLOTA==18) {SLOTA=19; AudioSelection1="VA0J"; AUDIO1=true; Serial.println("Weapon 0 changed from 18 to 19");} // 
+            if (SLOTA==17) {SLOTA=18; AudioSelection1="VA0I"; AUDIO1=true; Serial.println("Weapon 0 changed from 17 to 18");} // 
+            if (SLOTA==16) {SLOTA=17; AudioSelection1="VA0H"; AUDIO1=true; Serial.println("Weapon 0 changed from 16 to 17");} // 
+            if (SLOTA==15) {SLOTA=16; AudioSelection1="VA0G"; AUDIO1=true; Serial.println("Weapon 0 changed from 15 to 16");} //        
+            if (SLOTA==14) {SLOTA=15; AudioSelection1="VA0F"; AUDIO1=true; Serial.println("Weapon 0 changed from 14 to 15");} // 
+            if (SLOTA==13) {SLOTA=14; AudioSelection1="VA0E"; AUDIO1=true; Serial.println("Weapon 0 changed from 13 to 14");} // 
+            if (SLOTA==12) {SLOTA=13; AudioSelection1="VA0D"; AUDIO1=true; Serial.println("Weapon 0 changed from 12 to 13");} // 
+            if (SLOTA==11) {SLOTA=12; AudioSelection1="VA0C"; AUDIO1=true; Serial.println("Weapon 0 changed from 11 to 12");} //         
+            if (SLOTA==10) {SLOTA=11; AudioSelection1="VA0B"; AUDIO1=true; Serial.println("Weapon 0 changed from 10 to 11");} // 
+            if (SLOTA==9) {SLOTA=10; AudioSelection1="VA0A"; AUDIO1=true; Serial.println("Weapon 0 changed from 9 to 10");} // 
+            if (SLOTA==8) {SLOTA=9; AudioSelection1="VA09"; AUDIO1=true; Serial.println("Weapon 0 changed from 8 to 9");} // 
+            if (SLOTA==7) {SLOTA=8; AudioSelection1="VA08"; AUDIO1=true; Serial.println("Weapon 0 changed from 7 to 8");} // 
+            if (SLOTA==6) {SLOTA=7; AudioSelection1="VA07"; AUDIO1=true; Serial.println("Weapon 0 changed from 6 to 7");} // 
+            if (SLOTA==5) {SLOTA=6; AudioSelection1="VA06"; AUDIO1=true; Serial.println("Weapon 0 changed from 5 to 6");} // 
+            if (SLOTA==4) {SLOTA=5; AudioSelection1="VA05"; AUDIO1=true; Serial.println("Weapon 0 changed from 4 to 5");} //         
+            if (SLOTA==3) {SLOTA=4; AudioSelection1="VA04"; AUDIO1=true; Serial.println("Weapon 0 changed from 3 to 4");} // 
+            if (SLOTA==2) {SLOTA=3; AudioSelection1="VA03"; AUDIO1=true; Serial.println("Weapon 0 changed from 2 to 3");} // 
+            if (SLOTA==1 && STATUSCHANGE==false) {SLOTA=2; AudioSelection1="VA02"; AUDIO1=true; Serial.println("Weapon 0 changed from 1 to 2");} // 
+            if (SLOTA==100) {SLOTA=1; AudioSelection1="VA01"; AUDIO1=true; Serial.println("Weapon 0 changed from 0 to 1");} //        
+            STATUSCHANGE=false;
+          }
+          if (GETSLOT1){ // used for configuring manual team selection
+            if (SLOTB==19) {SLOTB=1; STATUSCHANGE=true; AudioSelection1="VA01"; AUDIO1=true; Serial.println("Weapon changed from 19 to 1");}          
+            if (SLOTB==18) {SLOTB=19; AudioSelection1="VA0J"; AUDIO1=true; Serial.println("Weapon 1 changed from 18 to 19");} // 
+            if (SLOTB==17) {SLOTB=18; AudioSelection1="VA0I"; AUDIO1=true; Serial.println("Weapon 1 changed from 17 to 18");} // 
+            if (SLOTB==16) {SLOTB=17; AudioSelection1="VA0H"; AUDIO1=true; Serial.println("Weapon 1 changed from 16 to 17");} // 
+            if (SLOTB==15) {SLOTB=16; AudioSelection1="VA0G"; AUDIO1=true; Serial.println("Weapon 1 changed from 15 to 16");} //        
+            if (SLOTB==14) {SLOTB=15; AudioSelection1="VA0F"; AUDIO1=true; Serial.println("Weapon 1 changed from 14 to 15");} // 
+            if (SLOTB==13) {SLOTB=14; AudioSelection1="VA0E"; AUDIO1=true; Serial.println("Weapon 1 changed from 13 to 14");} // 
+            if (SLOTB==12) {SLOTB=13; AudioSelection1="VA0D"; AUDIO1=true; Serial.println("Weapon 1 changed from 12 to 13");} // 
+            if (SLOTB==11) {SLOTB=12; AudioSelection1="VA0C"; AUDIO1=true; Serial.println("Weapon 1 changed from 11 to 12");} //         
+            if (SLOTB==10) {SLOTB=11; AudioSelection1="VA0B"; AUDIO1=true; Serial.println("Weapon 1 changed from 10 to 11");} // 
+            if (SLOTB==9) {SLOTB=10; AudioSelection1="VA0A"; AUDIO1=true; Serial.println("Weapon 1 changed from 9 to 10");} // 
+            if (SLOTB==8) {SLOTB=9; AudioSelection1="VA09"; AUDIO1=true; Serial.println("Weapon 1 changed from 8 to 9");} // 
+            if (SLOTB==7) {SLOTB=8; AudioSelection1="VA08"; AUDIO1=true; Serial.println("Weapon 1 changed from 7 to 8");} // 
+            if (SLOTB==6) {SLOTB=7; AudioSelection1="VA07"; AUDIO1=true; Serial.println("Weapon 1 changed from 6 to 7");} // 
+            if (SLOTB==5) {SLOTB=6; AudioSelection1="VA06"; AUDIO1=true; Serial.println("Weapon 1 changed from 5 to 6");} // 
+            if (SLOTB==4) {SLOTB=5; AudioSelection1="VA05"; AUDIO1=true; Serial.println("Weapon 1 changed from 4 to 5");} //         
+            if (SLOTB==3) {SLOTB=4; AudioSelection1="VA04"; AUDIO1=true; Serial.println("Weapon 1 changed from 3 to 4");} // 
+            if (SLOTB==2) {SLOTB=3; AudioSelection1="VA03"; AUDIO1=true; Serial.println("Weapon 1 changed from 2 to 3");} // 
+            if (SLOTB==1 && STATUSCHANGE==false) {SLOTB=2; AudioSelection1="VA02"; AUDIO1=true; Serial.println("Weapon 1 changed from 1 to 2");} // 
+            if (SLOTB==100) {SLOTB=1; AudioSelection1="VA01"; AUDIO1=true; Serial.println("Weapon 1 changed from 0 to 1");} //        
             STATUSCHANGE=false;
           }
         }
@@ -424,7 +474,9 @@ static void notifyCallback(
         }
         if (tokenStrings[2] == "0") {
           Serial.println("Alt fire Released"); // now you released the button
-          if (GETTEAM) {EXITSETTINGS=true; GETTEAM=false; AudioSelection1="VAO"; AUDIO1=true;}
+          if (GETTEAM) {GETTEAM=false; AudioSelection1="VAO"; AUDIO1=true;}
+          if (GETSLOT0) {GETSLOT0=false; AudioSelection1="VAO"; AUDIO1=true;}
+          if (GETSLOT1) {GETSLOT1=false; AudioSelection1="VAO"; AUDIO1=true;}
         }
       }
       // charge or reload handle pulled and released section
@@ -780,6 +832,7 @@ void playersettings() {
 
 // sets and sends gun type to slot 0 based upon stored settings
 void weaponsettingsA() {
+  if (SLOTA != 100) {SetSlotA=SLOTA; SLOTA=100;}
   if (UNLIMITEDAMMO==3){
   if(SetSlotA == 1) {Serial.println("Weapon 0 set to Unarmed"); sendString("$WEAP,0,*");} // cleared out weapon 0
   if(SetSlotA == 2) {Serial.println("Weapon 0 set to AMR"); sendString("$WEAP,0,,100,0,3,18,0,,,,,,,,360,850,14,0,1400,10,7,100,100,,0,,,S07,D20,D19,,D04,D03,D21,D18,,,,,14,28,75,,*");}
@@ -827,6 +880,7 @@ void weaponsettingsA() {
 
 // sets and sends gun for slot 0 based upon stored settings
 void weaponsettingsB() {
+  if (SLOTB != 100) {SetSlotB=SLOTB; SLOTB=100;}
   if (UNLIMITEDAMMO==3){
   if(SetSlotB == 1) {Serial.println("Weapon 1 set to Unarmed"); sendString("$WEAP,1,*");} // cleared out weapon 0
   if(SetSlotB == 2) {Serial.println("Weapon 1 set to AMR"); sendString("$WEAP,1,,100,0,3,18,0,,,,,,,,360,850,14,0,1400,10,7,100,100,,0,,,S07,D20,D19,,D04,D03,D21,D18,,,,,14,28,75,,*");}
@@ -886,8 +940,8 @@ void SetFFOutdoor() {
 
 // ends game... thats all
 void gameover() {
-  sendString("STOP,*"); // stops everything going on
-  sendString("CLEAR,*"); // clears out anything stored for game settings
+  sendString("$STOP,*"); // stops everything going on
+  sendString("$CLEAR,*"); // clears out anything stored for game settings
   sendString("$PLAY,VS6,4,6,,,,,*"); // says game over
   GAMEOVER = false;
 }
@@ -925,6 +979,9 @@ void respawnplayer() {
 //****************************************************************************************
 // this object is activated if a manual input is needed for gun settings
 // exitsettings object needs to be ran to leave this mode
+/*
+ * no longer used see 4/19 update notes
+ *
 void getsettings() {
   sendString("$PLAY,"+AudioSelection+",4,6,,,,,*");
   sendString("$START,*");
@@ -965,12 +1022,17 @@ void exitgetsettings() {
   EXITSETTINGS=false; // resets settings enabling trigger
   Serial.println("successfully exited get settings gun state");
 }
+*/
 //****************************************************************************
 void Audio() {
   if (AUDIO) {
     if(AudioPlayCounter == 0) {AudioPlayCounter++; sendString("$PLAY,"+AudioSelection+",4,6,,,,,*"); TurnOffAudio=true;}}
   if (AUDIO1) {sendString("$PLAY,"+AudioSelection1+",4,6,,,,,*"); AUDIO1=false; TurnOffAudio=false;}
-}
+  if (AudioSelection1=="VA20") {
+    sendString("$CLEAR,*");
+    sendString("$START,*");
+    }
+    }
 //******************************************************************************************
 //******************************************************************************************
 //******************************************************************************************
@@ -999,10 +1061,10 @@ void serialTask(void * params){
       // What we need to do here is analyze the serial data from ESP8266 and do something with it
       // So we set a programing variable, print the change to serial, and make the tagger confirm via audio
       // setting weapon slot 0  
-      if(readtxt.toInt()==1) {settingsallowed=1; AudioSelection="VA5F"; Serial.println("Weapon Slot 0 set to Manual");}
+      if(readtxt.toInt()==1) {settingsallowed=1; AudioSelection="VA5F"; SetSlotA=100; Serial.println("Weapon Slot 0 set to Manual");}
       if(readtxt.toInt() > 1 && readtxt.toInt() < 100) {SetSlotA=readtxt.toInt()-1; Serial.println("Weapon Slot 0 set"); AudioSelection="VA9T";}  
       // setting weapon slot 1
-      if(readtxt.toInt()==101) {settingsallowed=2; AudioSelection="VA5F"; Serial.println("Weapon Slot 1 set to Manual");}
+      if(readtxt.toInt()==101) {settingsallowed=2; AudioSelection="VA5F"; SetSlotB=100; Serial.println("Weapon Slot 1 set to Manual");}
       if(readtxt.toInt() > 101 && readtxt.toInt() < 200) {SetSlotB=readtxt.toInt()-101; Serial.println("Weapon Slot 1 set"); AudioSelection="VA9T";}
       // setting objective count
       if(readtxt.toInt()==200) {SetObj=32000; Serial.println("Objectives to win set to Unlimited"); AudioSelection="VA6V";}
@@ -1079,6 +1141,7 @@ void serialTask(void * params){
       if(readtxt.toInt() > 1499 && readtxt.toInt() < 1600) {SetVol = (readtxt.toInt() - 1499); Serial.println("Volume set to" + String(SetVol)); AudioSelection="VA9S";}
       // enabling game start
       if (readtxt.toInt()==1601) {GAMESTART=true; Serial.println("starting game");}
+      if (readtxt.toInt()==1600) {GAMEOVER=true; Serial.println("ending game");}
       // enable audio notification for changes
       if(1600 > readtxt.toInt() && readtxt.toInt() > 0) {AUDIO=true;}
     }
@@ -1180,9 +1243,10 @@ void loop() {
     // here we put in processes to run based upon conditions to make a game function
 
     if (TAGGERUPDATE1) {TAGGERUPDATE=false; Serial.println("Disabled LCD Data Send");}
-    if (settingsallowed1==3) {Serial.println("Team Settings requested"); delay(250); GETTEAM=true; getsettings(); settingsallowed1=0; }
+    if (settingsallowed1==3) {Serial.println("Team Settings requested"); delay(250); GETTEAM=true; settingsallowed1=0;}
+    if (settingsallowed1==1) {Serial.println("Weapon Slot 0 Requested"); delay(250); GETSLOT0=true; settingsallowed1=0;}
+    if (settingsallowed1==2) {Serial.println("Weapon Slot 1 Requested"); delay(250); GETSLOT1=true; settingsallowed1=0;}
     if (settingsallowed>0) {Serial.println("manual settings requested"); settingsallowed1=settingsallowed;} // this is triggered if a manual option is required for game settings
-    if (EXITSETTINGS) {exitgetsettings();} // this ends get settings mode
     if (RESPAWN) { // checks if respawn was triggered to respawn a player
       respawnplayer(); // respawns player
     }
