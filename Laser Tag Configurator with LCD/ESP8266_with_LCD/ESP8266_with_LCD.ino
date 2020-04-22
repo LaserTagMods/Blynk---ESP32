@@ -28,6 +28,8 @@
  *  4/15/2020 - Jay - Adjusted Ammunition settings to match Blynk update to have three setting options for the option to ensure there are options ;)
  *  4/16/2020 - Jay - enabled wifi out of range functionality, so that players can leave network and no errors occur in reading and processing data from devices
  *  4/19/2020 - Jay - edited game start serial monitor output only
+ *  4/22/2020 - Jay - added code to identify if esp32 is sending weapon selection data to display on lcd
+ *  
  */ 
 
 /* 
@@ -295,11 +297,40 @@ if (SerialLCD.available()) {
     //ammo,weap,health,armor,shield,lives,magazineammo,GunID
     Serial.println("Data Recieved from ESP32");
     Serial.println(tokenStrings[0]+","+tokenStrings[1]+","+tokenStrings[2]+","+tokenStrings[3]+","+tokenStrings[4]+","+tokenStrings[5]+","+tokenStrings[6]+","+tokenStrings[7]);
+    
     lcd.clear();
+
+    if (tokenStrings[0] == "500") {
+      lcd.setCursor(0,0);
+      lcd.print("Choose a Weapon");
+      lcd.setCursor(0,1);
+      lcd.print("Weap:");
+      if(tokenStrings[1] == "1") {lcd.print("Unarmed");}
+      if(tokenStrings[1] == "2") {lcd.print("AMR");}
+      if(tokenStrings[1] == "3") {lcd.print("Assault Rifle");}
+      if(tokenStrings[1] == "4") {lcd.print("Bolt Rifle");}
+      if(tokenStrings[1] == "5") {lcd.print("Burst Rifle");}
+      if(tokenStrings[1] == "6") {lcd.print("Charge Rifle");}
+      if(tokenStrings[1] == "7") {lcd.print("Enrg Launcher");}
+      if(tokenStrings[1] == "8") {lcd.print("Enrg Rifle");}
+      if(tokenStrings[1] == "9") {lcd.print("Force Rifle");}
+      if(tokenStrings[1] == "10") {lcd.print("Ion Sniper");}
+      if(tokenStrings[1] == "11") {lcd.print("Laser Cannon");}
+      if(tokenStrings[1] == "12") {lcd.print("Plsm Sniper");}
+      if(tokenStrings[1] == "13") {lcd.print("Rail Gun");}
+      if(tokenStrings[1] == "14") {lcd.print("Rckt Launcher");}
+      if(tokenStrings[1] == "15") {lcd.print("Shotgun");}
+      if(tokenStrings[1] == "16") {lcd.print("SMG");}
+      if(tokenStrings[1] == "17") {lcd.print("Sniper Rifle");}
+      if(tokenStrings[1] == "18") {lcd.print("Stinger");}
+      if(tokenStrings[1] == "19") {lcd.print("Suppressor");}
+      lcd.setCursor(0,3);
+      lcd.print("Confirm W/ Alt Fire");
+    } else {
 
     lcd.setCursor(0,0);
     lcd.print("ID:");
-    Serial.println("Player ID: " + String(tokenStrings[8]));
+    Serial.println("Player ID: " + String(tokenStrings[7]));
     lcd.print(tokenStrings[7]);
 
     lcd.setCursor(8,0);
@@ -349,9 +380,10 @@ if (SerialLCD.available()) {
     lcd.print("Lives:");
     tokenStrings[5] = tokenStrings[5] + "\0";
     if(tokenStrings[5].toInt() < 100) {lcd.print(tokenStrings[5]);}
-    else {lcd.print("Unlimited");}
+    else {lcd.print("Unlim");}
     Serial.println("Lives: " + String(tokenStrings[5]));
     //ammo,weap,health,armor,shield,lives,magazineammo,GunID
+    }
   }
 }
 //****************************************************************
