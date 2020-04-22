@@ -21,6 +21,7 @@
  * updated 4/15/2020 added additional ammunition options, limited, unlimited magazines, and unlimited rounds as options - ulimited rounds more for kids
  * updated 4/19/2020 improved team selection process, incorporated "End Game" selection (requires app update) disabled buttons/trigger/reload from making noises when pressed upon connection to avoid annoying sounds from players
  * updated 4/19/2020 enabled player selection for weapon slots 0/1. tested, debugged and ready to go for todays changes.
+ * updated 4/22/2020 enabled serial communications to send weapon selection to ESP8266 so that it can be displayed what weapon is what if lCD is installed
  *
  * Written by Jay Burden
  *
@@ -441,6 +442,7 @@ static void notifyCallback(
             if (SLOTA==1 && STATUSCHANGE==false) {SLOTA=2; AudioSelection1="VA02"; AUDIO1=true; Serial.println("Weapon 0 changed from 1 to 2");} // 
             if (SLOTA==100) {SLOTA=1; AudioSelection1="VA01"; AUDIO1=true; Serial.println("Weapon 0 changed from 0 to 1");} //        
             STATUSCHANGE=false;
+            TAGGERUPDATE=true;
           }
           if (GETSLOT1){ // used for configuring manual team selection
             if (SLOTB==19) {SLOTB=1; STATUSCHANGE=true; AudioSelection1="VA01"; AUDIO1=true; Serial.println("Weapon changed from 19 to 1");}          
@@ -464,6 +466,7 @@ static void notifyCallback(
             if (SLOTB==1 && STATUSCHANGE==false) {SLOTB=2; AudioSelection1="VA02"; AUDIO1=true; Serial.println("Weapon 1 changed from 1 to 2");} // 
             if (SLOTB==100) {SLOTB=1; AudioSelection1="VA01"; AUDIO1=true; Serial.println("Weapon 1 changed from 0 to 1");} //        
             STATUSCHANGE=false;
+            TAGGERUPDATE=true;
           }
         }
       }
@@ -1045,6 +1048,8 @@ void serialTask(void * params){
     if (TAGGERUPDATE){
       Serial.println("Disabled LCD Data Send for BLE Core Triggered");
       TAGGERUPDATE1=true;
+      if (GETSLOT1) {ammo1=500; weap=SLOTB; Serial.println("sending weapon selection info for weapon slot 0");}
+      if (GETSLOT0) {ammo1=500; weap=SLOTA; Serial.println("sending weapon selection info for weapon slot 1");}
       String LCDText = String(ammo1)+","+String(weap)+","+String(health)+","+String(armor)+","+String(shield)+","+String(PlayerLives)+","+String(ammo2)+","+String(GunID);
       Serial.println(LCDText);
       SerialLCD.println(LCDText);
