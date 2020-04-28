@@ -29,6 +29,8 @@
  *  4/16/2020 - Jay - enabled wifi out of range functionality, so that players can leave network and no errors occur in reading and processing data from devices
  *  4/19/2020 - Jay - edited game start serial monitor output only
  *  4/22/2020 - Jay - added code to identify if esp32 is sending weapon selection data to display on lcd
+ *  4/27/2020 - Jay - finished the processing of the sync score command, request data from esp32, recieve data, process scores, send via Bridge to control device (Primary Game Hub) limited to 52 scores for players because of limited Virtual Pins (alternatively a second Device could be used to breakd up the score reporting.
+ *  
  *  
  */ 
 
@@ -230,6 +232,10 @@ Format below: (ToESP32 value)(Setting)(Selection) (Virtual Pin) (Pin Value)
 #include <ESP8266WiFi.h> // used for setting up wifi comms
 #include <BlynkSimpleEsp8266.h> // used to run all necessary blynk objects/functions
 
+// set up bridge widget on V1 of Device 1
+// this creates the widget needed to send data to the controller
+WidgetBridge bridge1(V1);
+
 //**********************************************************************************
 //****************************  UPDATE THIS SECTION!!!!! ***************************
 //**********************************************************************************
@@ -241,6 +247,11 @@ char auth[] = "nAL11Xm5K05AYh7Nh6A0PccJRKO3wnZt";
 // Set password to "" for open networks.
 char ssid[] = "maxipad";
 char pass[] = "9165047812";
+// set the bridge token
+BLYNK_CONNECTED() {
+  bridge1.setAuthToken("nngeMu8Nz6CAjzmPfFR89d31VBoSSRff"); // Token of the device 2
+}
+
 //**********************************************************************************
 //****************************  UPDATE THIS SECTION!!!!! ***************************
 //**********************************************************************************
@@ -252,6 +263,7 @@ int lcdRows = 4;
 // Variables needed:
 int ToESP32=0;
 String tokenStrings[8];
+String ScoreTokenStrings[73];
 /*
  * edited out for alternate conrols
 long gametime=2000000000; // used as a timer for games
@@ -260,12 +272,16 @@ long gamedelay=4000; // sets min delay for start a game time accumulation, only 
 */
 
 bool GAMESTART=false;
+bool SYNCSCORE=false;
+bool ENABLESERIAL=true;
 
 unsigned long startt = millis();
 
 // timers for running certain applications periodically with the blynk program
 BlynkTimer ESP32Send; // created a timer object called "ESP32Send"
 BlynkTimer ESP32Read; // created a timer object called "ESP32Read"
+BlynkTimer SyncScoreRead; // created a timer object called "SyncScoreRead"
+
 
 #ifndef RX
 #define RX 13
@@ -386,6 +402,198 @@ if (SerialLCD.available()) {
     }
   }
 }
+
+//******************************************************************
+// object used to receive data from ESP32 BLE device
+void ReadSyncScoreData() {
+if (SerialLCD.available()) {
+    String readStr = SerialLCD.readStringUntil('\n');
+    char *ptr = strtok((char*)readStr.c_str(), ",");
+    int index = 0;
+    while (ptr != NULL)
+    {
+      ScoreTokenStrings[index] = ptr;
+      index++;
+      ptr = strtok(NULL, ",");  // takes a list of delimiters
+    }
+    // create a string that looks like this: 
+    // (Player ID, token 0), (Player Team, token 1), (Player Objective Score, token 2) (Team scores, tokens 3-8), (player kill counts, tokens 9-72 
+    Serial.println("Score Data Recieved from ESP32");
+    SYNCSCORE=false;
+      lcd.clear();
+      lcd.setCursor(0,0);
+      lcd.print("Syncing Scores");
+      lcd.setCursor(0,1);
+      lcd.print("Deaths: ");
+      int Deaths=0;
+      int Data[64];
+      int count=0;
+      while (count<73) {
+      Data[count]=ScoreTokenStrings[count].toInt();
+      Serial.println("Converting String character "+String(count)+" to integer");
+      count++;
+      }
+      Deaths = Data[3] + Data[4] + Data[5] + Data[6] + Data[7] + Data[8];
+      // add all kills
+      // send kills to lcd
+      lcd.print(Deaths);
+      Serial.println("Player Deaths: "+String(Deaths));
+      lcd.setCursor(0,2);
+      lcd.print("Player Objectives completed: "+String(Data[2]));
+      Serial.println("Player Objectives completed: "+String(Data[2]));
+      // send scores to blynk accumulator device over bridge to be summed and then posted to blynk server/app
+      // designating certain pins for score accumulation. 
+      // Pins 0-63 are for player kill counts, this sends all player scores
+        bridge1.virtualWrite(V0, Data[9]); // sending the value to controller
+        bridge1.virtualWrite(V1, Data[10]); // sending the value to controller
+        bridge1.virtualWrite(V2, Data[11]); // sending the value to controller
+        bridge1.virtualWrite(V3, Data[12]); // sending the value to controller
+        bridge1.virtualWrite(V4, Data[13]); // sending the value to controller
+        bridge1.virtualWrite(V5, Data[14]); // sending the value to controller
+        bridge1.virtualWrite(V6, Data[15]); // sending the value to controller
+        bridge1.virtualWrite(V7, Data[16]); // sending the value to controller
+        bridge1.virtualWrite(V8, Data[17]); // sending the value to controller
+        bridge1.virtualWrite(V9, Data[18]); // sending the value to controller
+        bridge1.virtualWrite(V10, Data[19]); // sending the value to controller
+        bridge1.virtualWrite(V11, Data[20]); // sending the value to controller
+        bridge1.virtualWrite(V12, Data[21]); // sending the value to controller
+        bridge1.virtualWrite(V13, Data[22]); // sending the value to controller
+        bridge1.virtualWrite(V14, Data[23]); // sending the value to controller
+        bridge1.virtualWrite(V15, Data[24]); // sending the value to controller
+        bridge1.virtualWrite(V16, Data[25]); // sending the value to controller
+        bridge1.virtualWrite(V17, Data[26]); // sending the value to controller
+        bridge1.virtualWrite(V18, Data[27]); // sending the value to controller
+        bridge1.virtualWrite(V19, Data[28]); // sending the value to controller
+        bridge1.virtualWrite(V20, Data[29]); // sending the value to controller
+        bridge1.virtualWrite(V21, Data[30]); // sending the value to controller
+        bridge1.virtualWrite(V22, Data[31]); // sending the value to controller
+        bridge1.virtualWrite(V23, Data[32]); // sending the value to controller
+        bridge1.virtualWrite(V24, Data[33]); // sending the value to controller
+        bridge1.virtualWrite(V25, Data[34]); // sending the value to controller
+        bridge1.virtualWrite(V26, Data[35]); // sending the value to controller
+        bridge1.virtualWrite(V27, Data[36]); // sending the value to controller
+        bridge1.virtualWrite(V28, Data[37]); // sending the value to controller
+        bridge1.virtualWrite(V29, Data[38]); // sending the value to controller
+        bridge1.virtualWrite(V30, Data[39]); // sending the value to controller
+        bridge1.virtualWrite(V31, Data[40]); // sending the value to controller
+        bridge1.virtualWrite(V32, Data[41]); // sending the value to controller
+        bridge1.virtualWrite(V33, Data[42]); // sending the value to controller
+        bridge1.virtualWrite(V34, Data[43]); // sending the value to controller
+        bridge1.virtualWrite(V35, Data[44]); // sending the value to controller
+        bridge1.virtualWrite(V36, Data[45]); // sending the value to controller
+        bridge1.virtualWrite(V37, Data[46]); // sending the value to controller
+        bridge1.virtualWrite(V38, Data[47]); // sending the value to controller
+        bridge1.virtualWrite(V39, Data[48]); // sending the value to controller
+        bridge1.virtualWrite(V40, Data[49]); // sending the value to controller
+        bridge1.virtualWrite(V41, Data[50]); // sending the value to controller
+        bridge1.virtualWrite(V42, Data[51]); // sending the value to controller
+        bridge1.virtualWrite(V43, Data[52]); // sending the value to controller
+        bridge1.virtualWrite(V44, Data[53]); // sending the value to controller
+        bridge1.virtualWrite(V45, Data[54]); // sending the value to controller
+        bridge1.virtualWrite(V46, Data[55]); // sending the value to controller
+        bridge1.virtualWrite(V47, Data[56]); // sending the value to controller
+        bridge1.virtualWrite(V48, Data[57]); // sending the value to controller
+        bridge1.virtualWrite(V49, Data[58]); // sending the value to controller
+        bridge1.virtualWrite(V50, Data[59]); // sending the value to controller
+        bridge1.virtualWrite(V51, Data[60]); // sending the value to controller
+        bridge1.virtualWrite(V52, Data[61]); // sending the value to controller
+        bridge1.virtualWrite(V53, Data[62]); // sending the value to controller
+        bridge1.virtualWrite(V54, Data[63]); // sending the value to controller
+        bridge1.virtualWrite(V55, Data[64]); // sending the value to controller
+        bridge1.virtualWrite(V56, Data[65]); // sending the value to controller
+        bridge1.virtualWrite(V57, Data[66]); // sending the value to controller
+        bridge1.virtualWrite(V58, Data[67]); // sending the value to controller
+        bridge1.virtualWrite(V59, Data[68]); // sending the value to controller
+        bridge1.virtualWrite(V60, Data[69]); // sending the value to controller
+        bridge1.virtualWrite(V61, Data[70]); // sending the value to controller
+        bridge1.virtualWrite(V62, Data[71]); // sending the value to controller
+        bridge1.virtualWrite(V63, Data[72]); // sending the value to controller
+      // team kill scores (6 pins) are located on pins 64-69
+        bridge1.virtualWrite(V64, Data[3]); // sending the value to controller
+        bridge1.virtualWrite(V65, Data[4]); // sending the value to controller
+        bridge1.virtualWrite(V66, Data[5]); // sending the value to controller
+        bridge1.virtualWrite(V67, Data[6]); // sending the value to controller
+        bridge1.virtualWrite(V68, Data[7]); // sending the value to controller
+        bridge1.virtualWrite(V69, Data[8]); // sending the value to controller
+      // now we need to send objective points for the teams. This will be on pins 70-75
+      // we are only sending on one pin because were using the players objective points
+      // to accumulate on the right teams pin.
+        if (Data[2]==0) {bridge1.virtualWrite(V70, Data[1]);}  // sending the value to controller
+        if (Data[2]==1) {bridge1.virtualWrite(V71, Data[1]);}  // sending the value to controller
+        if (Data[2]==2) {bridge1.virtualWrite(V72, Data[1]);}  // sending the value to controller
+        if (Data[2]==3) {bridge1.virtualWrite(V73, Data[1]);}  // sending the value to controller
+        if (Data[2]==4) {bridge1.virtualWrite(V74, Data[1]);}  // sending the value to controller
+        if (Data[2]==5) {bridge1.virtualWrite(V75, Data[1]);}  // sending the value to controller
+      // now we send the player objective score, pins 76-139 are reserved for player objective scores
+        if (Data[0]==0) {bridge1.virtualWrite(V76, Data[2]);}  // sending the value to controller
+        if (Data[0]==1) {bridge1.virtualWrite(V77, Data[2]);}  // sending the value to controller
+        if (Data[0]==2) {bridge1.virtualWrite(V78, Data[2]);}  // sending the value to controller
+        if (Data[0]==3) {bridge1.virtualWrite(V79, Data[2]);}  // sending the value to controller
+        if (Data[0]==4) {bridge1.virtualWrite(V80, Data[2]);}  // sending the value to controller
+        if (Data[0]==5) {bridge1.virtualWrite(V81, Data[2]);}  // sending the value to controller
+        if (Data[0]==6) {bridge1.virtualWrite(V82, Data[2]);}  // sending the value to controller
+        if (Data[0]==7) {bridge1.virtualWrite(V83, Data[2]);}  // sending the value to controller
+        if (Data[0]==8) {bridge1.virtualWrite(V84, Data[2]);}  // sending the value to controller
+        if (Data[0]==9) {bridge1.virtualWrite(V85, Data[2]);}  // sending the value to controller
+        if (Data[0]==10) {bridge1.virtualWrite(V86, Data[2]);}  // sending the value to controller
+        if (Data[0]==11) {bridge1.virtualWrite(V87, Data[2]);}  // sending the value to controller
+        if (Data[0]==12) {bridge1.virtualWrite(V88, Data[2]);}  // sending the value to controller
+        if (Data[0]==13) {bridge1.virtualWrite(V89, Data[2]);}  // sending the value to controller
+        if (Data[0]==14) {bridge1.virtualWrite(V90, Data[2]);}  // sending the value to controller
+        if (Data[0]==15) {bridge1.virtualWrite(V91, Data[2]);}  // sending the value to controller
+        if (Data[0]==16) {bridge1.virtualWrite(V92, Data[2]);}  // sending the value to controller
+        if (Data[0]==17) {bridge1.virtualWrite(V93, Data[2]);}  // sending the value to controller
+        if (Data[0]==18) {bridge1.virtualWrite(V94, Data[2]);}  // sending the value to controller
+        if (Data[0]==19) {bridge1.virtualWrite(V95, Data[2]);}  // sending the value to controller
+        if (Data[0]==20) {bridge1.virtualWrite(V96, Data[2]);}  // sending the value to controller
+        if (Data[0]==21) {bridge1.virtualWrite(V97, Data[2]);}  // sending the value to controller
+        if (Data[0]==22) {bridge1.virtualWrite(V98, Data[2]);}  // sending the value to controller
+        if (Data[0]==23) {bridge1.virtualWrite(V99, Data[2]);}  // sending the value to controller
+        if (Data[0]==24) {bridge1.virtualWrite(V100, Data[2]);}  // sending the value to controller
+        if (Data[0]==25) {bridge1.virtualWrite(V101, Data[2]);}  // sending the value to controller
+        if (Data[0]==26) {bridge1.virtualWrite(V102, Data[2]);}  // sending the value to controller
+        if (Data[0]==27) {bridge1.virtualWrite(V103, Data[2]);}  // sending the value to controller
+        if (Data[0]==28) {bridge1.virtualWrite(V104, Data[2]);}  // sending the value to controller
+        if (Data[0]==29) {bridge1.virtualWrite(V105, Data[2]);}  // sending the value to controller
+        if (Data[0]==30) {bridge1.virtualWrite(V106, Data[2]);}  // sending the value to controller
+        if (Data[0]==31) {bridge1.virtualWrite(V107, Data[2]);}  // sending the value to controller
+        if (Data[0]==32) {bridge1.virtualWrite(V108, Data[2]);}  // sending the value to controller
+        if (Data[0]==33) {bridge1.virtualWrite(V109, Data[2]);}  // sending the value to controller
+        if (Data[0]==34) {bridge1.virtualWrite(V110, Data[2]);}  // sending the value to controller
+        if (Data[0]==35) {bridge1.virtualWrite(V111, Data[2]);}  // sending the value to controller
+        if (Data[0]==36) {bridge1.virtualWrite(V112, Data[2]);}  // sending the value to controller
+        if (Data[0]==37) {bridge1.virtualWrite(V113, Data[2]);}  // sending the value to controller
+        if (Data[0]==38) {bridge1.virtualWrite(V114, Data[2]);}  // sending the value to controller
+        if (Data[0]==39) {bridge1.virtualWrite(V115, Data[2]);}  // sending the value to controller
+        if (Data[0]==40) {bridge1.virtualWrite(V116, Data[2]);}  // sending the value to controller
+        if (Data[0]==41) {bridge1.virtualWrite(V117, Data[2]);}  // sending the value to controller
+        if (Data[0]==42) {bridge1.virtualWrite(V118, Data[2]);}  // sending the value to controller
+        if (Data[0]==43) {bridge1.virtualWrite(V119, Data[2]);}  // sending the value to controller
+        if (Data[0]==44) {bridge1.virtualWrite(V120, Data[2]);}  // sending the value to controller
+        if (Data[0]==45) {bridge1.virtualWrite(V121, Data[2]);}  // sending the value to controller
+        if (Data[0]==46) {bridge1.virtualWrite(V122, Data[2]);}  // sending the value to controller
+        if (Data[0]==47) {bridge1.virtualWrite(V123, Data[2]);}  // sending the value to controller
+        if (Data[0]==48) {bridge1.virtualWrite(V124, Data[2]);}  // sending the value to controller
+        if (Data[0]==49) {bridge1.virtualWrite(V125, Data[2]);}  // sending the value to controller
+        if (Data[0]==50) {bridge1.virtualWrite(V126, Data[2]);}  // sending the value to controller
+        if (Data[0]==51) {bridge1.virtualWrite(V127, Data[2]);}  // sending the value to controller
+        /*         
+        Limitations without additional programing to expand Virtual pins on Blynk 
+        if (Data[0]==52) {bridge1.virtualWrite(V128, Data[2]);}  // sending the value to controller
+        if (Data[0]==53) {bridge1.virtualWrite(V129, Data[2]);}  // sending the value to controller
+        if (Data[0]==54) {bridge1.virtualWrite(V130, Data[2]);}  // sending the value to controller
+        if (Data[0]==55) {bridge1.virtualWrite(V131, Data[2]);}  // sending the value to controller
+        if (Data[0]==56) {bridge1.virtualWrite(V132, Data[2]);}  // sending the value to controller
+        if (Data[0]==57) {bridge1.virtualWrite(V133, Data[2]);}  // sending the value to controller
+        if (Data[0]==58) {bridge1.virtualWrite(V134, Data[2]);}  // sending the value to controller
+        if (Data[0]==59) {bridge1.virtualWrite(V135, Data[2]);}  // sending the value to controller
+        if (Data[0]==60) {bridge1.virtualWrite(V136, Data[2]);}  // sending the value to controller
+        if (Data[0]==61) {bridge1.virtualWrite(V137, Data[2]);}  // sending the value to controller
+        if (Data[0]==62) {bridge1.virtualWrite(V138, Data[2]);}  // sending the value to controller
+        if (Data[0]==63) {bridge1.virtualWrite(V139, Data[2]);}  // sending the value to controller
+        */
+    }
+  }
 //****************************************************************
 // object used to send data to esp32 BLE device
 void SendESP32Data() {
@@ -628,11 +836,10 @@ if (b==8) {ToESP32=1008; SendESP32Data(); Serial.println("Delayed Start is set t
 if (b==9) {ToESP32=1009; SendESP32Data(); Serial.println("Delayed Start is set to 15 Minutes");}
 }
 
-// Sets Special Abilities (future for medics ammo etc)
+// Sends Request for Score Syncing
 BLYNK_WRITE(V11) {
 int b=param.asInt();
-if (b==1) {ToESP32=1101; SendESP32Data(); Serial.println("Special Abilities is set to item 1");}
-if (b==2) {ToESP32=1102; SendESP32Data(); Serial.println("Special Abilities is set to item 2");}
+if (b==1) {ToESP32=1101; SendESP32Data(); Serial.println("Score Sync Request Sent");}
 }
 
 // Sets Player Gender
@@ -698,13 +905,15 @@ void setup()
 
   // timer settings (currently not used)
   ESP32Read.setInterval(1L, ReadESP32Data); // Reading data from esp32 constantly
+  SyncScoreRead.setInterval(1L, ReadSyncScoreData); // Reading data from esp32 constantly
   // ESP32Send.setInterval(5000L, SendESP32Data); // sending commands to esp32 every five seconds
 }
 
 void loop()
 {
   Blynk.run();
-  ESP32Read.run();
+  if (ENABLESERIAL) {ESP32Read.run();}
+  if (SYNCSCORE) {SyncScoreRead.run();}
   /*
    *  edited out as an alternate method for ignoring blynk in game mode
    /// while (GAMESTART) {
