@@ -22,6 +22,8 @@
  * updated 4/19/2020 improved team selection process, incorporated "End Game" selection (requires app update) disabled buttons/trigger/reload from making noises when pressed upon connection to avoid annoying sounds from players
  * updated 4/19/2020 enabled player selection for weapon slots 0/1. tested, debugged and ready to go for todays changes.
  * updated 4/22/2020 enabled serial communications to send weapon selection to ESP8266 so that it can be displayed what weapon is what if lCD is installed
+ * updated 4/22/2020 enabled game timer to terminate a game for a player
+ * updated 4/27/2020 enabled serial send of game score data to esp8266
  *
  * Written by Jay Burden
  *
@@ -298,9 +300,11 @@ int ReloadType; // used for unlimited ammo... maybe 10 is for unlimited
 int Team=0; // team selection used when allowed for custom configuration
 int MaxKills = 32000; // setting limit on kill counts
 int Objectives = 32000; // objective goals
+int CompletedObjectives=0; // earned objectives by player
 int PlayerLives = 32000; // setting max player lives
 int MaxTeamLives = 32000; // setting maximum team lives
 long GameTimer = 2000000000; // setting maximum game time
+long GameStartTime=0; // used to set the start time when a match begins
 int PlayerKillCount[64] = {0}; // so its players 0-63 as the player id.
 int TeamKillCount[6] = {0}; // teams 0-6, Red-0, blue-1, yellow-2, green-3, purple-4, cyan-5
 int DelayStart = 0; // set delay count down to 0 seconds for default
@@ -780,6 +784,7 @@ void delaystart() {
   sendString("$PLAYX,0,*");
   sendString("$SPAWN,,*");
   Serial.println("Delayed Start Complete, should be in game play mode now");
+  GameStartTime=millis();
 }
 
 //******************************************************************************************
@@ -823,7 +828,7 @@ void playersettings() {
   // male is default as 0, female is 1
   // health = 45; armor = 70; shield =70;
   
-  if (SetTeam=100) {
+  if (SetTeam==100) {
     if(SetGNDR == 0) {sendString("$PSET,"+String(GunID)+","+String(Team)+","+String(health)+","+String(armor)+","+String(shield)+",50,,H44,JAD,V33,V3I,V3C,V3G,V3E,V37,H06,H55,H13,H21,H02,U15,W71,A10,*");}
     else {sendString("$PSET,"+String(GunID)+","+String(Team)+",45,70,70,50,,H44,JAD,VB3,VBI,VBC,VBG,VBE,VB7,H06,H55,H13,H21,H02,U15,W71,A10,*");}
   } else{
@@ -1037,6 +1042,22 @@ void Audio() {
     }
     }
 //******************************************************************************************
+void SyncScores() {
+  int senddelay=GunID*1000;
+  String LCDText;
+  delay(senddelay);
+  if (SetTeam==100) {
+    // create a string that looks like this: 
+    // (Player ID, token 0), (Player Team, token 1), (Player Objective Score, token 2) (Team scores, tokens 3-8), (player kill counts, tokens 9-72 
+    String LCDText = String(GunID)+","+String(Team)+","+String(CompletedObjectives)+","+String(TeamKillCount[1])+","+String(TeamKillCount[2])+","+String(TeamKillCount[3])+","+String(TeamKillCount[4])+","+String(TeamKillCount[5])+","+String(TeamKillCount[6])+","+String(PlayerKillCount[1])+","+String(PlayerKillCount[2])+","+String(PlayerKillCount[3])+","+String(PlayerKillCount[4])+","+String(PlayerKillCount[5])+","+String(PlayerKillCount[6])+","+String(PlayerKillCount[7])+","+String(PlayerKillCount[8])+","+String(PlayerKillCount[9])+","+String(PlayerKillCount[10])+","+String(PlayerKillCount[11])+","+String(PlayerKillCount[12])+","+String(PlayerKillCount[13])+","+String(PlayerKillCount[14])+","+String(PlayerKillCount[15])+","+String(PlayerKillCount[16])+","+String(PlayerKillCount[17])+","+String(PlayerKillCount[18])+","+String(PlayerKillCount[19])+","+String(PlayerKillCount[20])+","+String(PlayerKillCount[21])+","+String(PlayerKillCount[22])+","+String(PlayerKillCount[23])+","+String(PlayerKillCount[24])+","+String(PlayerKillCount[25])+","+String(PlayerKillCount[26])+","+String(PlayerKillCount[27])+","+String(PlayerKillCount[28])+","+String(PlayerKillCount[29])+","+String(PlayerKillCount[30])+","+String(PlayerKillCount[31])+","+String(PlayerKillCount[32])+","+String(PlayerKillCount[33])+","+String(PlayerKillCount[34])+","+String(PlayerKillCount[35])+","+String(PlayerKillCount[36])+","+String(PlayerKillCount[37])+","+String(PlayerKillCount[38])+","+String(PlayerKillCount[39])+","+String(PlayerKillCount[40])+","+String(PlayerKillCount[41])+","+String(PlayerKillCount[42])+","+String(PlayerKillCount[43])+","+String(PlayerKillCount[44])+","+String(PlayerKillCount[45])+","+String(PlayerKillCount[46])+","+String(PlayerKillCount[47])+","+String(PlayerKillCount[48])+","+String(PlayerKillCount[49])+","+String(PlayerKillCount[50])+","+String(PlayerKillCount[51])+","+String(PlayerKillCount[52])+","+String(PlayerKillCount[53])+","+String(PlayerKillCount[54])+","+String(PlayerKillCount[55])+","+String(PlayerKillCount[56])+","+String(PlayerKillCount[57])+","+String(PlayerKillCount[58])+","+String(PlayerKillCount[59])+","+String(PlayerKillCount[60])+","+String(PlayerKillCount[61])+","+String(PlayerKillCount[62])+","+String(PlayerKillCount[63])+","+String(PlayerKillCount[64]);
+    } else {
+      String LCDText = String(GunID)+","+String(SetTeam)+","+String(CompletedObjectives)+","+String(TeamKillCount[1])+","+String(TeamKillCount[2])+","+String(TeamKillCount[3])+","+String(TeamKillCount[4])+","+String(TeamKillCount[5])+","+String(TeamKillCount[6])+","+String(PlayerKillCount[1])+","+String(PlayerKillCount[2])+","+String(PlayerKillCount[3])+","+String(PlayerKillCount[4])+","+String(PlayerKillCount[5])+","+String(PlayerKillCount[6])+","+String(PlayerKillCount[7])+","+String(PlayerKillCount[8])+","+String(PlayerKillCount[9])+","+String(PlayerKillCount[10])+","+String(PlayerKillCount[11])+","+String(PlayerKillCount[12])+","+String(PlayerKillCount[13])+","+String(PlayerKillCount[14])+","+String(PlayerKillCount[15])+","+String(PlayerKillCount[16])+","+String(PlayerKillCount[17])+","+String(PlayerKillCount[18])+","+String(PlayerKillCount[19])+","+String(PlayerKillCount[20])+","+String(PlayerKillCount[21])+","+String(PlayerKillCount[22])+","+String(PlayerKillCount[23])+","+String(PlayerKillCount[24])+","+String(PlayerKillCount[25])+","+String(PlayerKillCount[26])+","+String(PlayerKillCount[27])+","+String(PlayerKillCount[28])+","+String(PlayerKillCount[29])+","+String(PlayerKillCount[30])+","+String(PlayerKillCount[31])+","+String(PlayerKillCount[32])+","+String(PlayerKillCount[33])+","+String(PlayerKillCount[34])+","+String(PlayerKillCount[35])+","+String(PlayerKillCount[36])+","+String(PlayerKillCount[37])+","+String(PlayerKillCount[38])+","+String(PlayerKillCount[39])+","+String(PlayerKillCount[40])+","+String(PlayerKillCount[41])+","+String(PlayerKillCount[42])+","+String(PlayerKillCount[43])+","+String(PlayerKillCount[44])+","+String(PlayerKillCount[45])+","+String(PlayerKillCount[46])+","+String(PlayerKillCount[47])+","+String(PlayerKillCount[48])+","+String(PlayerKillCount[49])+","+String(PlayerKillCount[50])+","+String(PlayerKillCount[51])+","+String(PlayerKillCount[52])+","+String(PlayerKillCount[53])+","+String(PlayerKillCount[54])+","+String(PlayerKillCount[55])+","+String(PlayerKillCount[56])+","+String(PlayerKillCount[57])+","+String(PlayerKillCount[58])+","+String(PlayerKillCount[59])+","+String(PlayerKillCount[60])+","+String(PlayerKillCount[61])+","+String(PlayerKillCount[62])+","+String(PlayerKillCount[63])+","+String(PlayerKillCount[64]);
+      }
+  Serial.println(LCDText);
+  SerialLCD.println(LCDText);
+  Serial.println("Sent LCD data to ESP8266");
+}
+//******************************************************************************************
 //******************************************************************************************
 //******************************************************************************************
 // serial communications that is pinned to second core in set up
@@ -1129,9 +1150,8 @@ void serialTask(void * params){
       if(readtxt.toInt()==1007) {DelayStart=7; Serial.println("Delay Start Set to 5 minutes"); AudioSelection="VA2S";}
       if(readtxt.toInt()==1008) {DelayStart=8; Serial.println("Delay Start Set to 10 minutes"); AudioSelection="VA6H";}
       if(readtxt.toInt()==1009) {DelayStart=9; Serial.println("Delay Start Set to 15 minutes"); AudioSelection="VA2P";}
-      // setting special abilities
-      if(readtxt.toInt()==1101) {Special=1; Serial.println("Special Set to Unknown"); AudioSelection="VA2P";}
-      if(readtxt.toInt()==1101) {Special=2; Serial.println("Special Set to Unknown"); AudioSelection="VA2P";}
+      // Sync Score Request Recieved
+      if(readtxt.toInt()==1101) {SyncScores; Serial.println("Request Recieved to Sync Scoring"); AudioSelection="VA91";}
       // setting gender
       if(readtxt.toInt()==1200) {SetGNDR=0; Serial.println("Gender set to Male"); AudioSelection="V3I";}
       if(readtxt.toInt()==1201) {SetGNDR=1; Serial.println("Gender set to Female"); AudioSelection="VBI";}
@@ -1279,6 +1299,9 @@ void loop() {
         Serial.println("Weapon Slot 1 has been reloaded, disabling reload");
         OutofAmmoB=false;
     }
+    // game settings and objective completion checks:
+    if ((millis() - GameStartTime) > GameTimer) {GAMEOVER=true; Serial.println("game time expired"); GameStartTime=0;}
+    
 //************************************************************************************
   } else if (doScan) {
     if (millis() - startScan > 5000) {
