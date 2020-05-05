@@ -24,6 +24,8 @@
  * updated 4/22/2020 enabled serial communications to send weapon selection to ESP8266 so that it can be displayed what weapon is what if lCD is installed
  * updated 4/22/2020 enabled game timer to terminate a game for a player
  * updated 4/27/2020 enabled serial send of game score data to esp8266
+ * updated 4/28/2020 adjusted volume settings to modify volume not at game start but whenever
+ * updated 5/5/2020 modified the delayed start counter to work better and not stop the program as well as incorporate auditable countdown
  *
  * Written by Jay Burden
  *
@@ -297,6 +299,7 @@ int SetVol=65; // set tagger volume adjustment, default is 65
 int CurrentWeapSlot; // used for indicating what weapon slot is being used, primarily for unlimited ammo
 int ReloadType; // used for unlimited ammo... maybe 10 is for unlimited
 
+int Deaths = 0; // death counter
 int Team=0; // team selection used when allowed for custom configuration
 int MaxKills = 32000; // setting limit on kill counts
 int Objectives = 32000; // objective goals
@@ -307,7 +310,7 @@ long GameTimer = 2000000000; // setting maximum game time
 long GameStartTime=0; // used to set the start time when a match begins
 int PlayerKillCount[64] = {0}; // so its players 0-63 as the player id.
 int TeamKillCount[6] = {0}; // teams 0-6, Red-0, blue-1, yellow-2, green-3, purple-4, cyan-5
-int DelayStart = 0; // set delay count down to 0 seconds for default
+long DelayStart = 0; // set delay count down to 0 seconds for default
 int GameMode=1; // for setting up general settings
 int Special=0; // special settings
 int AudioPlayCounter=0; // used to make sure audio is played only once (redundant check)
@@ -328,7 +331,7 @@ int health = 45;
 int armor = 70;
 int shield =70;
 
-
+bool VOLUMEADJUST=false; // trigger for audio adjustment
 bool RESPAWN = false; // trigger to enable auto respawn when killed in game
 bool GAMEOVER = false; // used to trigger game over and boot a gun out of play mode
 bool TAGGERUPDATE = false; // used to trigger sending data to ESP8266 used for BLE core
@@ -385,7 +388,7 @@ static void notifyCallback(
     //*******************************************************
     // first signal we get from gun is this one and it tells the esp
     // that gun is happy with the connection
-    if (tokenStrings[0] == "$#CONNECT") {AudioSelection1="VA20"; AUDIO1=true;}
+    if (tokenStrings[0] == "$#CONNECT") {VOLUMEADJUST=true; AudioSelection1="VA20"; AUDIO1=true;}
     // this analyzes every single time a trigger is pulled
     // or a button is pressed or reload handle pulled. pretty cool
     // i dont do much with it yet here but will be used later to allow
@@ -577,6 +580,7 @@ static void notifyCallback(
         Serial.println("Player: " + String(lastTaggedPlayer) + " Score: " + String(PlayerKillCount[lastTaggedPlayer]));
         if (PlayerLives > 0 && SetRSPNMode < 9) { // doing a check if we still have lives left after dying
           RESPAWN = true;
+          Deaths++;
           Serial.println("Auto respawn enabled");
         }
         if (PlayerLives > 0 && SetRSPNMode == 9) {
@@ -776,10 +780,21 @@ void gameconfigurator() {
 // this starts a game
 void delaystart() {
   Serial.println("Starting Delayed Game Start");
-  sendString("$VOL,"+String(SetVol)+",0,*"); // sets max volume on gun 0-100 feet distance
   //sendString("$PLAY,VA84,4,5,,,,,*"); // plays a ten second countdown
   sendString("$HLED,,6,,,,,*"); // changes headset to end of game
-  delay(DelayStart); // delays ten seconds or as configured
+  // this portion creates a hang up in the program to delay until the time is up
+  long actualdelay = 0; // used to count the actual delay versus desired delay
+  long delaybeginning = millis(); // sets variable as the current time to track when the actual delay started
+  long delaycounter = millis(); // this will be used to track current time in milliseconds and compared to the start of the delay
+  int audibletrigger = 0; // used as a trigger once we get to 10 seconds left
+  if (DelayStart > 10) {
+  while (DelayStart > actualdelay) { // this creates a sub loop in the object to keep doing the following steps until this condition is met... actual delay is the same as planned delay
+    delaycounter = millis(); // sets the delay clock to the current progam timer
+    actualdelay = delaycounter - delaybeginning; // calculates how long weve been delaying the program/start
+    if (actualdelay < 10000) {audibletrigger++;} // a check to start adding value to the audible trigger
+    if (audibletrigger == 1) {sendString("$PLAY,VA83,4,6,,,,,*");} // this can only happen once so it doesnt keep looping in the program we only play it when trigger is equal to 1
+  }
+  }
   sendString("$PLAY,VA81,4,6,,,,,*"); // plays the .. nevermind
   sendString("$PLAYX,0,*");
   sendString("$SPAWN,,*");
@@ -958,6 +973,7 @@ void gameover() {
 
 // as the name says... respawn a player!
 void respawnplayer() {
+  // if (
   Serial.println("Respawning Player");
   sendString("$WEAP,0,*"); // cleared out weapon 0
   sendString("$WEAP,1,*"); // cleared out weapon 1
@@ -1141,15 +1157,15 @@ void serialTask(void * params){
       if(readtxt.toInt()==908) {SetRSPNMode=8; Serial.println("Respawn Set to Ramp 90"); AudioSelection="VA0W";}
       if(readtxt.toInt()==909) {SetRSPNMode=9; Serial.println("Respawn Set to Manual/Respawn Station"); AudioSelection="VA9H";}
       // set start delay
-      if(readtxt.toInt()==1001) {DelayStart=1; Serial.println("Delay Start Set to Immediate"); AudioSelection="VA4T";}
-      if(readtxt.toInt()==1002) {DelayStart=2; Serial.println("Delay Start Set to 15 seconds"); AudioSelection="VA2Q";}
-      if(readtxt.toInt()==1003) {DelayStart=3; Serial.println("Delay Start Set to 30 seconds"); AudioSelection="VA0R";}
-      if(readtxt.toInt()==1004) {DelayStart=4; Serial.println("Delay Start Set to 45 seconds"); AudioSelection="VA0T";}
-      if(readtxt.toInt()==1005) {DelayStart=5; Serial.println("Delay Start Set to 60 seconds"); AudioSelection="VA0V";}
-      if(readtxt.toInt()==1006) {DelayStart=6; Serial.println("Delay Start Set to 90 seconds"); AudioSelection="VA0X";}
-      if(readtxt.toInt()==1007) {DelayStart=7; Serial.println("Delay Start Set to 5 minutes"); AudioSelection="VA2S";}
-      if(readtxt.toInt()==1008) {DelayStart=8; Serial.println("Delay Start Set to 10 minutes"); AudioSelection="VA6H";}
-      if(readtxt.toInt()==1009) {DelayStart=9; Serial.println("Delay Start Set to 15 minutes"); AudioSelection="VA2P";}
+      if(readtxt.toInt()==1001) {DelayStart=10; Serial.println("Delay Start Set to Immediate"); AudioSelection="VA4T";}
+      if(readtxt.toInt()==1002) {DelayStart=15000; Serial.println("Delay Start Set to 15 seconds"); AudioSelection="VA2Q";}
+      if(readtxt.toInt()==1003) {DelayStart=30000; Serial.println("Delay Start Set to 30 seconds"); AudioSelection="VA0R";}
+      if(readtxt.toInt()==1004) {DelayStart=45000; Serial.println("Delay Start Set to 45 seconds"); AudioSelection="VA0T";}
+      if(readtxt.toInt()==1005) {DelayStart=60000; Serial.println("Delay Start Set to 60 seconds"); AudioSelection="VA0V";}
+      if(readtxt.toInt()==1006) {DelayStart=90000; Serial.println("Delay Start Set to 90 seconds"); AudioSelection="VA0X";}
+      if(readtxt.toInt()==1007) {DelayStart=300000; Serial.println("Delay Start Set to 5 minutes"); AudioSelection="VA2S";}
+      if(readtxt.toInt()==1008) {DelayStart=600000; Serial.println("Delay Start Set to 10 minutes"); AudioSelection="VA6H";}
+      if(readtxt.toInt()==1009) {DelayStart=900000; Serial.println("Delay Start Set to 15 minutes"); AudioSelection="VA2P";}
       // Sync Score Request Recieved
       if(readtxt.toInt()==1101) {SyncScores; Serial.println("Request Recieved to Sync Scoring"); AudioSelection="VA91";}
       // setting gender
@@ -1163,7 +1179,7 @@ void serialTask(void * params){
       if(readtxt.toInt()==1401) {SetFF=1; Serial.println("Friendly Fire On"); AudioSelection="VA32";}
       if(readtxt.toInt()==1400) {SetFF=0; Serial.println("Friendly Fire Off"); AudioSelection="VA31";}
       // Setting Tagger volume
-      if(readtxt.toInt() > 1499 && readtxt.toInt() < 1600) {SetVol = (readtxt.toInt() - 1499); Serial.println("Volume set to" + String(SetVol)); AudioSelection="VA9S";}
+      if(readtxt.toInt() > 1499 && readtxt.toInt() < 1600) {SetVol = (readtxt.toInt() - 1499); Serial.println("Volume set to" + String(SetVol)); AudioSelection="VA9S"; VOLUMEADJUST=true;}
       // enabling game start
       if (readtxt.toInt()==1601) {GAMESTART=true; Serial.println("starting game");}
       if (readtxt.toInt()==1600) {GAMEOVER=true; Serial.println("ending game");}
@@ -1277,6 +1293,10 @@ void loop() {
     }
     if (GAMEOVER) { // checks if something triggered game over (out of lives, objective met)
       gameover(); // runs object to kick player out of game
+    }
+    if (VOLUMEADJUST) {
+      VOLUMEADJUST=false;
+      sendString("$VOL,"+String(SetVol)+",0,*"); // sets max volume on gun 0-100 feet distance
     }
     if (AUDIO) {
       Audio();
