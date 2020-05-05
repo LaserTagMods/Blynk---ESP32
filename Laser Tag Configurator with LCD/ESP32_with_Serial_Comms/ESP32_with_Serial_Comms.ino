@@ -26,6 +26,7 @@
  * updated 4/27/2020 enabled serial send of game score data to esp8266
  * updated 4/28/2020 adjusted volume settings to modify volume not at game start but whenever
  * updated 5/5/2020 modified the delayed start counter to work better and not stop the program as well as incorporate auditable countdown
+ * updated 5/5/2020 incorporated respawn delay timers as well as respawn stations for manual respawn
  *
  * Written by Jay Burden
  *
@@ -293,6 +294,8 @@ long SetTime=2000000000; // used for in game timer functions on esp32 (future
 int SetODMode=0; // used to set indoor and outdoor modes (default is on)
 int SetGNDR=0; // used to change player to male 0/female 1, male is default 
 int SetRSPNMode; // used to set auto or manual respawns from bases/ir (future)
+long RespawnTimer = 0; // used to delay until respawn enabled
+long RespawnTimerMax = 0; // max timer setting for incremental respawn timer (Ramp 90)
 int SetObj=32000; // used to program objectives
 int SetFF=1; // set game to friendly fire on/off (default is on)
 int SetVol=65; // set tagger volume adjustment, default is 65
@@ -333,6 +336,8 @@ int shield =70;
 
 bool VOLUMEADJUST=false; // trigger for audio adjustment
 bool RESPAWN = false; // trigger to enable auto respawn when killed in game
+bool MANUALRESPAWN = false; // trigger to enable manual respawn from base stations when killed
+bool PENDINGRESPAWNIR = false; // trigger to check for IR respawn signals
 bool GAMEOVER = false; // used to trigger game over and boot a gun out of play mode
 bool TAGGERUPDATE = false; // used to trigger sending data to ESP8266 used for BLE core
 bool TAGGERUPDATE1 = false; // used to turn off BLE core lcd send data trigger
@@ -524,11 +529,19 @@ static void notifyCallback(
         space 6 is "is critical" if critical a damage multiplier would apply, rare.
         space 7 is "power", not sure what that does.*/
       //been tagged
+      if (PENDINGRESPAWNIR) { // checks if we are awaiting a respawn signal
+        // we need to analyze the tag received to see if it is a respawn worthy tag
+        if (tokenStrings[2] == "7" && tokenStrings[4].toInt() == SetTeam && tokenStrings[5] == "0") { // need to analyze tag, if it matches we need to respawn player
+          RESPAWN = true; // triggers a respawn
+          PENDINGRESPAWNIR = false; // closing the process of checking for a respawining tag and enables all other normal in game functions
+        }
+      } else {
       TAGGERUPDATE=true;
       Serial.println("Enabled LCD Data Send");
       lastTaggedPlayer = tokenStrings[3].toInt();
       lastTaggedTeam = tokenStrings[4].toInt();
       Serial.println("Just tagged by: " + String(lastTaggedPlayer) + " on team: " + String(lastTaggedTeam));
+      }
 
     }
     
@@ -574,14 +587,19 @@ static void notifyCallback(
         PlayerKillCount[lastTaggedPlayer]++; // adding a point to the last player who killed us
         TeamKillCount[lastTaggedTeam]++; // adding a point to the team who caused the last kill
         PlayerLives--; // taking our preset lives and subtracting one life then talking about it on the monitor
+        Deaths++;
         Serial.println("Lives Remaining = " + String(PlayerLives));
         Serial.println("Killed by: " + String(lastTaggedPlayer) + " on team: " + String(lastTaggedTeam));
         Serial.println("Team: " + String(lastTaggedTeam) + "Score: " + String(TeamKillCount[lastTaggedTeam]));
         Serial.println("Player: " + String(lastTaggedPlayer) + " Score: " + String(PlayerKillCount[lastTaggedPlayer]));
+        Serial.println("Death Count: " + String(Deaths));
         if (PlayerLives > 0 && SetRSPNMode < 9) { // doing a check if we still have lives left after dying
           RESPAWN = true;
-          Deaths++;
           Serial.println("Auto respawn enabled");
+        }
+        if (PlayerLives > 0 && SetRSPNMode == 9) { // doing a check if we still have lives left after dying
+          MANUALRESPAWN = true;
+          Serial.println("Manual respawn enabled");
         }
         if (PlayerLives > 0 && SetRSPNMode == 9) {
           // run manual respawn object
@@ -701,158 +719,16 @@ class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
     } // onResult
 }; // MyAdvertisedDeviceCallbacks
 
-
-
 //******************************************************************************************
-// disclaimer... incomplete... 
-// this function will be used when a player is eliminated and needs to respawn off of a base
-// or player signal to respawn them... a lot to think about still on this and im using auto respawn 
-// for now untill this is further thought out and developed
-void taggedoutmode() {
-  /*
-  sendString("$START,*");
-  sendString("$GSET,1,0,1,0,1,0,50,1,*");
-  sendString("$PSET,54,5,45,70,70,50,,H44,JAD,V33,V3I,V3C,V3G,V3E,V37,H06,H55,H13,H21,H02,U15,W71,A10,*");
-  sendString("$SIR,0,0,,1,0,0,1,,*");
-  sendString("$SIR,0,1,,36,0,0,1,,*");
-  sendString("$SIR,0,3,,37,0,0,1,,*");
-  sendString("$SIR,8,0,,38,0,0,1,,*");
-  sendString("$SIR,9,3,,24,10,0,,,*");
-  sendString("$SIR,10,0,X13,1,0,100,2,60,*");
-  sendString("$SIR,6,0,H02,1,0,90,1,40,*");
-  sendString("$SIR,13,1,H57,1,0,0,1,,*");
-  sendString("$SIR,13,0,H50,1,0,0,1,,*");
-  sendString("$SIR,13,3,H49,1,0,100,0,60,*");
-  sendString("$BMAP,0,0,,,,,*");
-  sendString("$BMAP,1,100,0,1,99,99,*");
-  sendString("$BMAP,2,97,,,,,*");
-  sendString("$BMAP,3,98,,,,,*");
-  sendString("$BMAP,4,98,,,,,*");
-  sendString("$BMAP,5,98,,,,,*");
-  sendString("$BMAP,8,4,,,,,*");
-  sendString("$SPAWN,,*");
-  sendString("$WEAP,0,*"); // cleared out weapon 0
-  sendString("$WEAP,1,*"); // cleared out weapon 1
-  sendString("$WEAP,4,*"); // cleared out melee weapon
-  sendString("$GLED,,,,5,,,*"); // changes headset to tagged out color
-  */
-  RESPAWN = false;
-}
-//****************************************************************************************
-//************** This sends Settings to Tagger *******************************************
-//****************************************************************************************
-// loads all the game configuration settings into the gun
-void gameconfigurator() {
-  Serial.println("Running Game Configurator based upon recieved inputs");
-  sendString("$CLEAR,*");
-  sendString("$START,*");
-  SetFFOutdoor();
-  playersettings();
-  weaponsettingsA();
-  weaponsettingsB();
-  sendString("$WEAP,4,1,90,13,1,90,0,,,,,,,,1000,100,1,0,0,10,13,100,100,,0,0,,M92,,,,,,,,,,,,1,0,20,*");
-  sendString("$SIR,0,0,,1,0,0,1,,*");
-  sendString("$SIR,0,1,,36,0,0,1,,*");
-  sendString("$SIR,0,3,,37,0,0,1,,*");
-  sendString("$SIR,8,0,,38,0,0,1,,*");
-  sendString("$SIR,9,3,,24,10,0,,,*");
-  sendString("$SIR,10,0,X13,1,0,100,2,60,*");
-  sendString("$SIR,6,0,H02,1,0,90,1,40,*");
-  sendString("$SIR,13,1,H57,1,0,0,1,,*");
-  sendString("$SIR,13,0,H50,1,0,0,1,,*");
-  sendString("$SIR,13,3,H49,1,0,100,0,60,*");
-  sendString("$BMAP,0,0,,,,,*");
-  sendString("$BMAP,1,100,0,1,99,99,*");
-  sendString("$BMAP,2,97,,,,,*");
-  sendString("$BMAP,3,98,,,,,*");
-  sendString("$BMAP,4,98,,,,,*");
-  sendString("$BMAP,5,98,,,,,*");
-  sendString("$BMAP,8,4,,,,,*");
-  Serial.println("Finished Game Configuration set up");
-  PlayerLives=SetLives; // sets configured lives from settings received
-  GameTimer=SetTime; // sets timer from input of esp8266
-  Objectives=SetObj; // sets configured objectives from esp8266
-}
-
-//****************************************************************************************
-//************************ This starts a game *******************************************
-//****************************************************************************************
-// this starts a game
-void delaystart() {
-  Serial.println("Starting Delayed Game Start");
-  //sendString("$PLAY,VA84,4,5,,,,,*"); // plays a ten second countdown
-  sendString("$HLED,,6,,,,,*"); // changes headset to end of game
-  // this portion creates a hang up in the program to delay until the time is up
-  long actualdelay = 0; // used to count the actual delay versus desired delay
-  long delaybeginning = millis(); // sets variable as the current time to track when the actual delay started
-  long delaycounter = millis(); // this will be used to track current time in milliseconds and compared to the start of the delay
-  int audibletrigger = 0; // used as a trigger once we get to 10 seconds left
-  if (DelayStart > 10) {
-  while (DelayStart > actualdelay) { // this creates a sub loop in the object to keep doing the following steps until this condition is met... actual delay is the same as planned delay
-    delaycounter = millis(); // sets the delay clock to the current progam timer
-    actualdelay = delaycounter - delaybeginning; // calculates how long weve been delaying the program/start
-    if (actualdelay < 10000) {audibletrigger++;} // a check to start adding value to the audible trigger
-    if (audibletrigger == 1) {sendString("$PLAY,VA83,4,6,,,,,*");} // this can only happen once so it doesnt keep looping in the program we only play it when trigger is equal to 1
-  }
-  }
-  sendString("$PLAY,VA81,4,6,,,,,*"); // plays the .. nevermind
-  sendString("$PLAYX,0,*");
-  sendString("$SPAWN,,*");
-  Serial.println("Delayed Start Complete, should be in game play mode now");
-  GameStartTime=millis();
-}
-
-//******************************************************************************************
-
-// process used to send string properly to gun... splits up longer strings in bytes of 20
-// to make sure gun understands them all... not sure about all of what does what below...
-// had some major help from Sri Lanka Guy!
-void sendString(String value) {
-  const char * c_string = value.c_str();
-  uint8_t buf[21] = {0};
-  int sentSize = 0;
-  Serial.println("sending ");
-  if (value.length() > 20) {
-    for (int i = 0; i < value.length() / 20; i++) {
-      memcpy(buf, c_string + i * 20, 20);
-      Serial.print((char*)buf);
-      pRemoteRXCharacteristic->writeValue(buf, 20, true);
-      sentSize += 20;
-    }
-    int remaining = value.length() - sentSize;
-    memcpy(buf, c_string + sentSize, remaining);
-    pRemoteRXCharacteristic->writeValue(buf, remaining, true);
-    for (int i = 0; i < remaining; i++)
-      Serial.print((char)buf[i]);
-    Serial.println();
-  }
-  else {
-    pRemoteRXCharacteristic->writeValue((uint8_t*)value.c_str(), value.length(), true);
-  }
-}
-
-
-//******************************************************************************************
-// sets and sends player settings to gun based upon configuration settings
-void playersettings() {
-  // token 2 is player id or gun id other tokens were interested in modification
-  // are 2 for team ID, 3 for max HP, 4 for max Armor, 5 for Max Shields, 
-  // 6 is critical damage bonus
-  // We really are only messing with Gender and Team though
-  // Gender is determined by the audio call outs listed, tokens 9 and on
-  // male is default as 0, female is 1
-  // health = 45; armor = 70; shield =70;
-  
-  if (SetTeam==100) {
-    if(SetGNDR == 0) {sendString("$PSET,"+String(GunID)+","+String(Team)+","+String(health)+","+String(armor)+","+String(shield)+",50,,H44,JAD,V33,V3I,V3C,V3G,V3E,V37,H06,H55,H13,H21,H02,U15,W71,A10,*");}
-    else {sendString("$PSET,"+String(GunID)+","+String(Team)+",45,70,70,50,,H44,JAD,VB3,VBI,VBC,VBG,VBE,VB7,H06,H55,H13,H21,H02,U15,W71,A10,*");}
-  } else{
-  if(SetGNDR == 0) {sendString("$PSET,"+String(GunID)+","+String(SetTeam)+",45,70,70,50,,H44,JAD,V33,V3I,V3C,V3G,V3E,V37,H06,H55,H13,H21,H02,U15,W71,A10,*");}
-  else {sendString("$PSET,"+String(GunID)+","+String(SetTeam)+",45,70,70,50,,H44,JAD,VB3,VBI,VBC,VBG,VBE,VB7,H06,H55,H13,H21,H02,U15,W71,A10,*");}
-}
+// sets and sends game settings based upon the stored settings
+void SetFFOutdoor() {
+  // token one of the following command is free for all, 0 is off and 1 is on
+  if(SetODMode == 0 && SetFF == 1) {sendString("$GSET,1,0,1,0,1,0,50,1,*");}
+  if(SetODMode == 1 && SetFF == 1) {sendString("$GSET,1,1,1,0,1,0,50,1,*");}
+  if(SetODMode == 1 && SetFF == 0) {sendString("$GSET,0,1,1,0,1,0,50,1,*");}
+  if(SetODMode == 0 && SetFF == 0) {sendString("$GSET,0,0,1,0,1,0,50,1,*");}
 }
 //******************************************************************************************
-
 // sets and sends gun type to slot 0 based upon stored settings
 void weaponsettingsA() {
   if (SLOTA != 100) {SetSlotA=SLOTA; SLOTA=100;}
@@ -946,18 +822,115 @@ void weaponsettingsB() {
   if(SetSlotB == 19) {Serial.println("Weapon 1 set to Suppressor"); sendString("$WEAP,1,,100,0,0,8,0,,,,,,,,75,850,48,288,2000,0,0,100,100,,0,2,50,Q06,,,,D26,D25,D24,D18,,,,,48,144,75,,*");}
 }
 }
+//****************************************************************************************
+//************** This sends Settings to Tagger *******************************************
+//****************************************************************************************
+// loads all the game configuration settings into the gun
+void gameconfigurator() {
+  Serial.println("Running Game Configurator based upon recieved inputs");
+  sendString("$CLEAR,*");
+  sendString("$START,*");
+  SetFFOutdoor();
+  playersettings();
+  weaponsettingsA();
+  weaponsettingsB();
+  sendString("$WEAP,4,1,90,13,1,90,0,,,,,,,,1000,100,1,0,0,10,13,100,100,,0,0,,M92,,,,,,,,,,,,1,0,20,*");
+  sendString("$SIR,0,0,,1,0,0,1,,*");
+  sendString("$SIR,0,1,,36,0,0,1,,*");
+  sendString("$SIR,0,3,,37,0,0,1,,*");
+  sendString("$SIR,8,0,,38,0,0,1,,*");
+  sendString("$SIR,9,3,,24,10,0,,,*");
+  sendString("$SIR,10,0,X13,1,0,100,2,60,*");
+  sendString("$SIR,6,0,H02,1,0,90,1,40,*");
+  sendString("$SIR,13,1,H57,1,0,0,1,,*");
+  sendString("$SIR,13,0,H50,1,0,0,1,,*");
+  sendString("$SIR,13,3,H49,1,0,100,0,60,*");
+  sendString("$BMAP,0,0,,,,,*");
+  sendString("$BMAP,1,100,0,1,99,99,*");
+  sendString("$BMAP,2,97,,,,,*");
+  sendString("$BMAP,3,98,,,,,*");
+  sendString("$BMAP,4,98,,,,,*");
+  sendString("$BMAP,5,98,,,,,*");
+  sendString("$BMAP,8,4,,,,,*");
+  Serial.println("Finished Game Configuration set up");
+  PlayerLives=SetLives; // sets configured lives from settings received
+  GameTimer=SetTime; // sets timer from input of esp8266
+  Objectives=SetObj; // sets configured objectives from esp8266
+  Deaths = 0;
+}
 
+//****************************************************************************************
+//************************ This starts a game *******************************************
+//****************************************************************************************
+// this starts a game
+void delaystart() {
+  Serial.println("Starting Delayed Game Start");
+  //sendString("$PLAY,VA84,4,5,,,,,*"); // plays a ten second countdown
+  sendString("$HLED,,6,,,,,*"); // changes headset to end of game
+  // this portion creates a hang up in the program to delay until the time is up
+  long actualdelay = 0; // used to count the actual delay versus desired delay
+  long delaybeginning = millis(); // sets variable as the current time to track when the actual delay started
+  long delaycounter = millis(); // this will be used to track current time in milliseconds and compared to the start of the delay
+  int audibletrigger = 0; // used as a trigger once we get to 10 seconds left
+  if (DelayStart > 10) {
+  while (DelayStart > actualdelay) { // this creates a sub loop in the object to keep doing the following steps until this condition is met... actual delay is the same as planned delay
+    delaycounter = millis(); // sets the delay clock to the current progam timer
+    actualdelay = delaycounter - delaybeginning; // calculates how long weve been delaying the program/start
+    if (actualdelay < 10000) {audibletrigger++;} // a check to start adding value to the audible trigger
+    if (audibletrigger == 1) {sendString("$PLAY,VA83,4,6,,,,,*");} // this can only happen once so it doesnt keep looping in the program we only play it when trigger is equal to 1
+  }
+  }
+  sendString("$PLAY,VA81,4,6,,,,,*"); // plays the .. nevermind
+  sendString("$PLAYX,0,*");
+  sendString("$SPAWN,,*");
+  Serial.println("Delayed Start Complete, should be in game play mode now");
+  GameStartTime=millis();
+}
 
 //******************************************************************************************
 
-// sets and sends game settings based upon the stored settings
-void SetFFOutdoor() {
-  // token one of the following command is free for all, 0 is off and 1 is on
-  if(SetODMode == 0 && SetFF == 1) {sendString("$GSET,1,0,1,0,1,0,50,1,*");}
-  if(SetODMode == 1 && SetFF == 1) {sendString("$GSET,1,1,1,0,1,0,50,1,*");}
-  if(SetODMode == 1 && SetFF == 0) {sendString("$GSET,0,1,1,0,1,0,50,1,*");}
-  if(SetODMode == 0 && SetFF == 0) {sendString("$GSET,0,0,1,0,1,0,50,1,*");}
+// process used to send string properly to gun... splits up longer strings in bytes of 20
+// to make sure gun understands them all... not sure about all of what does what below...
+// had some major help from Sri Lanka Guy!
+void sendString(String value) {
+  const char * c_string = value.c_str();
+  uint8_t buf[21] = {0};
+  int sentSize = 0;
+  Serial.println("sending ");
+  if (value.length() > 20) {
+    for (int i = 0; i < value.length() / 20; i++) {
+      memcpy(buf, c_string + i * 20, 20);
+      Serial.print((char*)buf);
+      pRemoteRXCharacteristic->writeValue(buf, 20, true);
+      sentSize += 20;
+    }
+    int remaining = value.length() - sentSize;
+    memcpy(buf, c_string + sentSize, remaining);
+    pRemoteRXCharacteristic->writeValue(buf, remaining, true);
+    for (int i = 0; i < remaining; i++)
+      Serial.print((char)buf[i]);
+    Serial.println();
+  }
+  else {
+    pRemoteRXCharacteristic->writeValue((uint8_t*)value.c_str(), value.length(), true);
+  }
 }
+
+
+//******************************************************************************************
+// sets and sends player settings to gun based upon configuration settings
+void playersettings() {
+  // token 2 is player id or gun id other tokens were interested in modification
+  // are 2 for team ID, 3 for max HP, 4 for max Armor, 5 for Max Shields, 
+  // 6 is critical damage bonus
+  // We really are only messing with Gender and Team though
+  // Gender is determined by the audio call outs listed, tokens 9 and on
+  // male is default as 0, female is 1
+  // health = 45; armor = 70; shield =70;
+  if(SetGNDR == 0) {sendString("$PSET,"+String(GunID)+","+String(SetTeam)+",45,70,70,50,,H44,JAD,V33,V3I,V3C,V3G,V3E,V37,H06,H55,H13,H21,H02,U15,W71,A10,*");}
+  else {sendString("$PSET,"+String(GunID)+","+String(SetTeam)+",45,70,70,50,,H44,JAD,VB3,VBI,VBC,VBG,VBE,VB7,H06,H55,H13,H21,H02,U15,W71,A10,*");}
+}
+//******************************************************************************************
 
 //******************************************************************************************
 
@@ -973,80 +946,47 @@ void gameover() {
 
 // as the name says... respawn a player!
 void respawnplayer() {
-  // if (
+  sendString("$HLOOP,2,1200,*"); // flashes the headset lights in a loop
+  // this portion creates a hang up in the program to delay until the time is up
+  if (RespawnTimer < RespawnTimerMax) {
+    RespawnTimer = 5000 * Deaths;
+  }
+  long actualdelay = 0; // used to count the actual delay versus desired delay
+  long delaybeginning = millis(); // sets variable as the current time to track when the actual delay started
+  long delaycounter = millis(); // this will be used to track current time in milliseconds and compared to the start of the delay
+  int audibletrigger = 0; // used as a trigger once we get to 10 seconds left
+  if (RespawnTimer > 10) {
+  while (RespawnTimer > actualdelay) { // this creates a sub loop in the object to keep doing the following steps until this condition is met... actual delay is the same as planned delay
+    delaycounter = millis(); // sets the delay clock to the current progam timer
+    actualdelay = delaycounter - delaybeginning; // calculates how long weve been delaying the program/start
+    if (actualdelay < 3000) {audibletrigger++;} // a check to start adding value to the audible trigger
+    if (audibletrigger == 1) {sendString("$PLAY,VA80,4,6,,,,,*");} // this can only happen once so it doesnt keep looping in the program we only play it when trigger is equal to 1
+  }
+  }
   Serial.println("Respawning Player");
   sendString("$WEAP,0,*"); // cleared out weapon 0
   sendString("$WEAP,1,*"); // cleared out weapon 1
   sendString("$WEAP,4,*"); // cleared out melee weapon
   weaponsettingsA();
   weaponsettingsB();
-  //sendString("$WEAP,0,,100,0,1,9,0,,,,,,,,100,850,36,144,1700,0,9,100,100,250,0,,,R23,D20,D19,,D23,D22,D21,D18,,,,,36,72,75,*");
-  //sendString("$WEAP,1,2,100,0,0,45,0,,,,,,70,80,900,850,6,24,400,2,7,100,100,,0,,,T01,,,,D01,D28,D27,D18,,,,,6,12,75,30,*");
   sendString("$WEAP,4,1,90,13,1,90,0,,,,,,,,1000,100,1,0,0,10,13,100,100,,0,0,,M92,,,,,,,,,,,,1,0,20,*");
-  sendString("$HLOOP,0,0,*"); // not sure what this does
   sendString("$GLED,,,,5,,,*"); // changes headset to tagged out color
-  delay(3000);
-  sendString("$WEAP,0,*"); // cleared out weapon 0
-  sendString("$WEAP,1,*"); // cleared out weapon 1
-  sendString("$WEAP,4,*"); // cleared out melee weapon
-  weaponsettingsA();
-  weaponsettingsB();
-  //sendString("$WEAP,0,,100,0,1,9,0,,,,,,,,100,850,36,144,1700,0,9,100,100,250,0,,,R23,D20,D19,,D23,D22,D21,D18,,,,,36,72,75,*");
-  //sendString("$WEAP,1,2,100,0,0,45,0,,,,,,70,80,900,850,6,24,400,2,7,100,100,,0,,,T01,,,,D01,D28,D27,D18,,,,,6,12,75,30,*");
-  sendString("$WEAP,4,1,90,13,1,90,0,,,,,,,,1000,100,1,0,0,10,13,100,100,,0,0,,M92,,,,,,,,,,,,1,0,20,*");
-  //sendString("$PLAYX,0,*");
-  //sendString("$PLAY,VA81,4,6,,,,,*");
   sendString("$SPAWN,,*"); // respawns player back in game
   Serial.println("Player Respawned");
   RESPAWN = false;
 }
 //****************************************************************************************
-// this object is activated if a manual input is needed for gun settings
-// exitsettings object needs to be ran to leave this mode
-/*
- * no longer used see 4/19 update notes
- *
-void getsettings() {
-  sendString("$PLAY,"+AudioSelection+",4,6,,,,,*");
-  sendString("$START,*");
-  sendString("$GSET,1,0,1,0,1,0,50,1,*");
-  sendString("$PSET,64,5,200,200,200,,,,,,,,,,,,,,,,,,,*");
-  sendString("$VOL,65,0,*"); // sets max volume on gun 0-100 feet distance
-  sendString("$SIR,0,0,,1,0,0,1,,*");
-  sendString("$SIR,0,1,,36,0,0,1,,*");
-  sendString("$SIR,0,3,,37,0,0,1,,*");
-  sendString("$SIR,8,0,,38,0,0,1,,*");
-  sendString("$SIR,9,3,,24,10,0,,,*");
-  sendString("$SIR,10,0,X13,1,0,100,2,60,*");
-  sendString("$SIR,6,0,H02,1,0,90,1,40,*");
-  sendString("$SIR,13,1,H57,1,0,0,1,,*");
-  sendString("$SIR,13,0,H50,1,0,0,1,,*");
-  sendString("$SIR,13,3,H49,1,0,100,0,60,*");
-  sendString("$BMAP,0,0,,,,,*"); // button mapping
-  sendString("$BMAP,1,100,0,1,99,99,*"); // button mapping
-  sendString("$BMAP,2,97,,,,,*"); // button maping
-  sendString("$BMAP,3,98,,,,,*"); // button mapping
-  sendString("$BMAP,4,98,,,,,*"); // button mapping
-  sendString("$BMAP,5,98,,,,,*"); // button mapping
-  sendString("$BMAP,8,4,,,,,*"); // button mapping
-  sendString("$PLAYX,0,*");
-  sendString("$PLAY,SW04,4,6,,,,,*"); // plays starwars music
+// disclaimer... incomplete... 
+// this function will be used when a player is eliminated and needs to respawn off of a base
+// or player signal to respawn them... a lot to think about still on this and im using auto respawn 
+// for now untill this is further thought out and developed
+void ManualRespawnMode() {
+  sendString("$STOP,*");
   sendString("$SPAWN,,*");
-  sendString("$WEAP,0,*"); // cleared out weapon 0
-  sendString("$WEAP,1,*"); // cleared out weapon 1
-  sendString("$WEAP,4,*"); // cleared out melee weapon
-  sendString("$GLED,,,,5,,,*"); // changes headset to tagged out color
+  sendString("$HLOOP,2,1200,*");
+  PENDINGRESPAWNIR = true;
+  MANUALRESPAWN = false;
 }
-
-void exitgetsettings() {
-  sendString("$GLED,,,,5,,,*"); // changes headset to tagged out color
-  delay(3000);
-  sendString("STOP,*"); // stops everything going on
-  sendString("CLEAR,*"); // clears out anything stored for game settings in gun, not esp
-  EXITSETTINGS=false; // resets settings enabling trigger
-  Serial.println("successfully exited get settings gun state");
-}
-*/
 //****************************************************************************
 void Audio() {
   if (AUDIO) {
@@ -1147,15 +1087,15 @@ void serialTask(void * params){
       if(readtxt.toInt()==810) {GameMode=10; Serial.println("Game mode set to One Domination"); AudioSelection="VA21";}
       if(readtxt.toInt()==811) {GameMode=11; Serial.println("Game mode set to Battle Royale"); AudioSelection="VA8J";}
       // Setting Respawn Settings
-      if(readtxt.toInt()==901) {SetRSPNMode=1; Serial.println("Respawn Set to Immediate"); AudioSelection="VA54";}
-      if(readtxt.toInt()==902) {SetRSPNMode=2; Serial.println("Respawn Set to 15 seconds"); AudioSelection="VA2Q";}
-      if(readtxt.toInt()==903) {SetRSPNMode=3; Serial.println("Respawn Set to 30 seconds"); AudioSelection="VA0R";}
-      if(readtxt.toInt()==904) {SetRSPNMode=4; Serial.println("Respawn Set to 45 seconds"); AudioSelection="VA0T";}
-      if(readtxt.toInt()==905) {SetRSPNMode=5; Serial.println("Respawn Set to 60 seconds"); AudioSelection="VA0V";}
-      if(readtxt.toInt()==906) {SetRSPNMode=6; Serial.println("Respawn Set to 90 seconds"); AudioSelection="VA0X";}
-      if(readtxt.toInt()==907) {SetRSPNMode=7; Serial.println("Respawn Set to Ramp 45"); AudioSelection="VA0S";}
-      if(readtxt.toInt()==908) {SetRSPNMode=8; Serial.println("Respawn Set to Ramp 90"); AudioSelection="VA0W";}
-      if(readtxt.toInt()==909) {SetRSPNMode=9; Serial.println("Respawn Set to Manual/Respawn Station"); AudioSelection="VA9H";}
+      if(readtxt.toInt()==901) {SetRSPNMode=1; RespawnTimer=10; Serial.println("Respawn Set to Immediate"); AudioSelection="VA54";}
+      if(readtxt.toInt()==902) {SetRSPNMode=2; RespawnTimer=15000; Serial.println("Respawn Set to 15 seconds"); AudioSelection="VA2Q";}
+      if(readtxt.toInt()==903) {SetRSPNMode=3; RespawnTimer=30000; Serial.println("Respawn Set to 30 seconds"); AudioSelection="VA0R";}
+      if(readtxt.toInt()==904) {SetRSPNMode=4; RespawnTimer=45000; Serial.println("Respawn Set to 45 seconds"); AudioSelection="VA0T";}
+      if(readtxt.toInt()==905) {SetRSPNMode=5; RespawnTimer=60000; Serial.println("Respawn Set to 60 seconds"); AudioSelection="VA0V";}
+      if(readtxt.toInt()==906) {SetRSPNMode=6; RespawnTimer=90000; Serial.println("Respawn Set to 90 seconds"); AudioSelection="VA0X";}
+      if(readtxt.toInt()==907) {SetRSPNMode=7; RespawnTimer=5000; RespawnTimerMax=45000; Serial.println("Respawn Set to Ramp 45"); AudioSelection="VA0S";}
+      if(readtxt.toInt()==908) {SetRSPNMode=8; RespawnTimer=5000; RespawnTimerMax=90000; Serial.println("Respawn Set to Ramp 90"); AudioSelection="VA0W";}
+      if(readtxt.toInt()==909) {SetRSPNMode=9; RespawnTimer=10; Serial.println("Respawn Set to Manual/Respawn Station"); AudioSelection="VA9H";}
       // set start delay
       if(readtxt.toInt()==1001) {DelayStart=10; Serial.println("Delay Start Set to Immediate"); AudioSelection="VA4T";}
       if(readtxt.toInt()==1002) {DelayStart=15000; Serial.println("Delay Start Set to 15 seconds"); AudioSelection="VA2Q";}
@@ -1181,7 +1121,7 @@ void serialTask(void * params){
       // Setting Tagger volume
       if(readtxt.toInt() > 1499 && readtxt.toInt() < 1600) {SetVol = (readtxt.toInt() - 1499); Serial.println("Volume set to" + String(SetVol)); AudioSelection="VA9S"; VOLUMEADJUST=true;}
       // enabling game start
-      if (readtxt.toInt()==1601) {GAMESTART=true; Serial.println("starting game");}
+      if (readtxt.toInt()==1601) {GAMESTART=true; Serial.println("starting game"); if (SetTeam == 100) {SetTeam=Team;}}
       if (readtxt.toInt()==1600) {GAMEOVER=true; Serial.println("ending game");}
       // enable audio notification for changes
       if(1600 > readtxt.toInt() && readtxt.toInt() > 0) {AUDIO=true;}
@@ -1288,8 +1228,11 @@ void loop() {
     if (settingsallowed1==1) {Serial.println("Weapon Slot 0 Requested"); delay(250); GETSLOT0=true; settingsallowed1=0;}
     if (settingsallowed1==2) {Serial.println("Weapon Slot 1 Requested"); delay(250); GETSLOT1=true; settingsallowed1=0;}
     if (settingsallowed>0) {Serial.println("manual settings requested"); settingsallowed1=settingsallowed;} // this is triggered if a manual option is required for game settings
-    if (RESPAWN) { // checks if respawn was triggered to respawn a player
+    if (RESPAWN) { // checks if auto respawn was triggered to respawn a player
       respawnplayer(); // respawns player
+    }
+    if (MANUALRESPAWN) { // checks if manual respawn was triggered to respawn a player
+      ManualRespawnMode();
     }
     if (GAMEOVER) { // checks if something triggered game over (out of lives, objective met)
       gameover(); // runs object to kick player out of game
