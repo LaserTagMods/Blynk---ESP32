@@ -28,6 +28,8 @@
  * updated 5/5/2020 modified the delayed start counter to work better and not stop the program as well as incorporate auditable countdown
  * updated 5/5/2020 incorporated respawn delay timers as well as respawn stations for manual respawn
  * updated 5/6/2020 fixed count down audio for respawn and delay start timers, also fixed lives assignment, was adding 100 to the lives selected. Note: all 5/5/2020 updates tested functional
+ * updated 5/6/2020 fixed game timer repeat end, added two minute warning, one minute warning and ten second count down to end of game
+ *
  *
  * Written by Jay Burden
  *
@@ -350,6 +352,7 @@ bool GETTEAM=false; // used when configuring customized settings
 bool STATUSCHANGE=false; // used to loop through selectable customized options
 bool GETSLOT0=false; // used for configuring manual weapon selection
 bool GETSLOT1=false; // used for configuring manual weapon selection
+bool INGAME=false; // status check for game timer and other later for running certain checks if gun is in game.
 
 long startScan = 0; // part of BLE enabling
 
@@ -886,6 +889,7 @@ void delaystart() {
   sendString("$SPAWN,,*");
   Serial.println("Delayed Start Complete, should be in game play mode now");
   GameStartTime=millis();
+  INGAME=true;
 }
 
 //******************************************************************************************
@@ -941,6 +945,7 @@ void gameover() {
   sendString("$CLEAR,*"); // clears out anything stored for game settings
   sendString("$PLAY,VS6,4,6,,,,,*"); // says game over
   GAMEOVER = false;
+  INGAME=false;
 }
 
 //******************************************************************************************
@@ -1264,7 +1269,14 @@ void loop() {
         OutofAmmoB=false;
     }
     // game settings and objective completion checks:
-    if ((millis() - GameStartTime) > GameTimer) {GAMEOVER=true; Serial.println("game time expired"); GameStartTime=0;}
+    if (INGAME) {
+      long ActualGameTime = millis() - GameStartTime;
+      long GameTimeRemaining = ActualGameTime - GameTimer;
+    if (ActualGameTime > GameTimer) {GAMEOVER=true; Serial.println("game time expired"); GameStartTime=0;}
+    if (GameTimeRemaining > 119650 && GameTimeRemaining < 120350) {AudioSelection1="VSD"; AUDIO1=true;}
+    if (GameTimeRemaining > 59650 && GameTimeRemaining < 60350) {AudioSelection1="VSA"; AUDIO1=true;}
+    if (GameTimeRemaining > 9650 && GameTimeRemaining < 10350) {AudioSelection1="VS84"; AUDIO1=true;} 
+    }
     
 //************************************************************************************
   } else if (doScan) {
