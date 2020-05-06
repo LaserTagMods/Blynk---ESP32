@@ -29,6 +29,7 @@
  * updated 5/5/2020 incorporated respawn delay timers as well as respawn stations for manual respawn
  * updated 5/6/2020 fixed count down audio for respawn and delay start timers, also fixed lives assignment, was adding 100 to the lives selected. Note: all 5/5/2020 updates tested functional
  * updated 5/6/2020 fixed game timer repeat end, added two minute warning, one minute warning and ten second count down to end of game
+ * updated 5/6/2020 re-instated three team selection and added four team auto selections
  *
  *
  * Written by Jay Burden
@@ -56,7 +57,6 @@
  *  Each time a value is sent to this ESP32 an action needs to perform once only
  *  to configure settings as listed below
  *  
-
 Format below: (ToESP32 value)(Setting)(Selection) (Virtual Pin) (Pin Value)
 0   Do nothing    None    N/A   N/A
 1   Weapon Slot 0 =   Player's Choice   V0    1
@@ -1025,6 +1025,10 @@ void SyncScores() {
 // serial communications that is pinned to second core in set up
 // this is where we write to variable to configure settings to send over BLE to tagger
 void serialTask(void * params){
+  int A = 0;
+  int B = 1;
+  int C = 2;
+  int D = 3;
   for(;;){
     if (settingsallowed1>0) {settingsallowed=0;} // checking that a trigger was set from other core, if so, disabling it on this core
     if (TurnOffAudio) {AUDIO=false; AudioPlayCounter=0;}
@@ -1079,7 +1083,54 @@ void serialTask(void * params){
       // set team settings
       if(readtxt.toInt()==701) {Serial.println("Free For All"); SetTeam=0; SetFF=1; AudioSelection="VA30";}
       if(readtxt.toInt()==702) {Serial.println("Teams Mode Two Teams (odds/evens)"); if (GunID % 2) {SetTeam=0; AudioSelection="VA13";} else {SetTeam=1; AudioSelection="VA1L";}}
-      if(readtxt.toInt()==703) {Serial.println("Teams Mode Player's Choice"); settingsallowed=3; SetTeam=100; AudioSelection="VA5E";} // this one allows for manual input of settings... each gun will need to select a team now
+      if(readtxt.toInt()==703) {
+        Serial.println("Teams Mode Three Teams (every third player)");
+        while (A < 64) {
+          if (GunID == A) {
+            SetTeam=0;
+          }
+          if (GunID == B) {
+            SetTeam=1;
+          }
+          if (GunID == C) {
+            SetTeam=2;
+          }
+          A = A + 3;
+          B = B + 3;
+          C = C + 3;
+        }
+        A = 0;
+        B = 1;
+        C = 2;
+        AudioSelection="VA1L";
+        }
+      if(readtxt.toInt()==704) {
+        Serial.println("Teams Mode Four Teams (every fourth player)");
+        while (A < 64) {
+          if (GunID == A) {
+            SetTeam=0;
+          }
+          if (GunID == B) {
+            SetTeam=1;
+          }
+          if (GunID == C) {
+            SetTeam=2;
+          }
+          if (GunID == D) {
+            SetTeam=3;
+          }
+          A = A + 4;
+          B = B + 4;
+          C = C + 4;
+          D = D + 4;
+        }
+        A = 0;
+        B = 1;
+        C = 2;
+        D = 3;
+        AudioSelection="VA1L";
+        }
+      if(readtxt.toInt()==705) {Serial.println("Teams Mode Player's Choice"); settingsallowed=3; SetTeam=100; AudioSelection="VA5E";} // this one allows for manual input of settings... each gun will need to select a team now
       // setting game time
       if(readtxt.toInt()==801) {GameMode=1; Serial.println("Game mode set to Deathmatch"); AudioSelection="VA26";}
       if(readtxt.toInt()==802) {GameMode=2; Serial.println("Game mode set to Capture the Flag"); AudioSelection="VA8P";}
