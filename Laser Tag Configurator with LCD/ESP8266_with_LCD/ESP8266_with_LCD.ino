@@ -30,7 +30,7 @@
  *  4/19/2020 - Jay - edited game start serial monitor output only
  *  4/22/2020 - Jay - added code to identify if esp32 is sending weapon selection data to display on lcd
  *  4/27/2020 - Jay - finished the processing of the sync score command, request data from esp32, recieve data, process scores, send via Bridge to control device (Primary Game Hub) limited to 52 scores for players because of limited Virtual Pins (alternatively a second Device could be used to breakd up the score reporting.
- *  
+ *  5/5/2020 - Jay - added lockout function when game is engaged so that commands cannot be sent except for end game after pressing start game.
  *  
  */ 
 
@@ -245,8 +245,8 @@ WidgetBridge bridge1(V1);
 char auth[] = "nAL11Xm5K05AYh7Nh6A0PccJRKO3wnZt";
 // Your WiFi credentials.
 // Set password to "" for open networks.
-char ssid[] = "maxipad";
-char pass[] = "9165047812";
+char ssid[] = "Burtek Energy";
+char pass[] = "Sunpower2020";
 // set the bridge token
 BLYNK_CONNECTED() {
   bridge1.setAuthToken("nngeMu8Nz6CAjzmPfFR89d31VBoSSRff"); // Token of the device 2
@@ -274,6 +274,7 @@ long gamedelay=4000; // sets min delay for start a game time accumulation, only 
 bool GAMESTART=false;
 bool SYNCSCORE=false;
 bool ENABLESERIAL=true;
+bool LOCKOUT=false;
 
 unsigned long startt = millis();
 
@@ -611,6 +612,7 @@ void SendESP32Data() {
 // Sets Weapon Slot 0
 BLYNK_WRITE(V0) {
 int b=param.asInt();
+if (LOCKOUT==false){
 if (b==1) {ToESP32=1; SendESP32Data(); Serial.println("Weapon Slot 0 is set to Player's Choice");}
 if (b==2) {ToESP32=2; SendESP32Data(); Serial.println("Weapon Slot 0 is set to Unarmed");}
 if (b==3) {ToESP32=3; SendESP32Data(); Serial.println("Weapon Slot 0 is set to AMR");}
@@ -632,10 +634,12 @@ if (b==18) {ToESP32=18; SendESP32Data(); Serial.println("Weapon Slot 0 is set to
 if (b==19) {ToESP32=19; SendESP32Data(); Serial.println("Weapon Slot 0 is set to Stinger");}
 if (b==20) {ToESP32=20; SendESP32Data(); Serial.println("Weapon Slot 0 is set to Suppressor");}
 }
+}
 
 // Sets Weapon Slot 1
 BLYNK_WRITE(V1) {
 int b=param.asInt();
+if (LOCKOUT==false){
 if (b==1) {ToESP32=101; SendESP32Data(); Serial.println("Weapon Slot 1 is set to Player's Choice");}
 if (b==2) {ToESP32=102; SendESP32Data(); Serial.println("Weapon Slot 1 is set to Unarmed");}
 if (b==3) {ToESP32=103; SendESP32Data(); Serial.println("Weapon Slot 1 is set to AMR");}
@@ -657,10 +661,12 @@ if (b==18) {ToESP32=118; SendESP32Data(); Serial.println("Weapon Slot 1 is set t
 if (b==19) {ToESP32=119; SendESP32Data(); Serial.println("Weapon Slot 1 is set to Stinger");}
 if (b==20) {ToESP32=120; SendESP32Data(); Serial.println("Weapon Slot 1 is set to Suppressor");}
 }
+}
 
 // Sets Objective Goals
 BLYNK_WRITE(V2) {
 int b=param.asInt();
+if (LOCKOUT==false){
 if (b==25) {ToESP32=225; SendESP32Data(); Serial.println("Objective/Goals is set to 25");}
 if (b==24) {ToESP32=224; SendESP32Data(); Serial.println("Objective/Goals is set to 24");}
 if (b==23) {ToESP32=223; SendESP32Data(); Serial.println("Objective/Goals is set to 23");}
@@ -688,10 +694,12 @@ if (b==2) {ToESP32=202; SendESP32Data(); Serial.println("Objective/Goals is set 
 if (b==1) {ToESP32=201; SendESP32Data(); Serial.println("Objective/Goals is set to 1");}
 if (b==0) {ToESP32=200; SendESP32Data(); Serial.println("Objective/Goals is set to Unlimited");}
 }
+}
 
 // Sets Kills to Win
 BLYNK_WRITE(V3) {
 int b=param.asInt();
+if (LOCKOUT==false){
 if (b==25) {ToESP32=325; SendESP32Data(); Serial.println("Kills to Win is set to 25");}
 if (b==24) {ToESP32=324; SendESP32Data(); Serial.println("Kills to Win is set to 24");}
 if (b==23) {ToESP32=323; SendESP32Data(); Serial.println("Kills to Win is set to 23");}
@@ -719,10 +727,12 @@ if (b==2) {ToESP32=302; SendESP32Data(); Serial.println("Kills to Win is set to 
 if (b==1) {ToESP32=301; SendESP32Data(); Serial.println("Kills to Win is set to 1");}
 if (b==0) {ToESP32=300; SendESP32Data(); Serial.println("Kills to Win is set to Unlimited");}
 }
+}
 
 // Sets Lives
 BLYNK_WRITE(V4) {
 int b=param.asInt();
+if (LOCKOUT==false){
 if (b==25) {ToESP32=425; SendESP32Data(); Serial.println("Lives is set to 25");}
 if (b==24) {ToESP32=424; SendESP32Data(); Serial.println("Lives is set to 24");}
 if (b==23) {ToESP32=423; SendESP32Data(); Serial.println("Lives is set to 23");}
@@ -750,10 +760,12 @@ if (b==2) {ToESP32=402; SendESP32Data(); Serial.println("Lives is set to 2");}
 if (b==1) {ToESP32=401; SendESP32Data(); Serial.println("Lives is set to 1");}
 if (b==0) {ToESP32=400; SendESP32Data(); Serial.println("Lives is set to Unlimited");}
 }
+}
 
 // Sets Game Time
 BLYNK_WRITE(V5) {
 int b=param.asInt();
+if (LOCKOUT==false){
 /*
 if (b==1) {ToESP32=501; SendESP32Data(); Serial.println("Game Time is set to 1 Minute"); gametime=60000+gamedelay;}
 if (b==2) {ToESP32=502; SendESP32Data(); Serial.println("Game Time is set to 5 Minutes"); gametime=300000+gamedelay;}
@@ -773,28 +785,34 @@ if (b==6) {ToESP32=506; SendESP32Data(); Serial.println("Game Time is set to 25 
 if (b==7) {ToESP32=507; SendESP32Data(); Serial.println("Game Time is set to 30 Minutes");}
 if (b==8) {ToESP32=508; SendESP32Data(); Serial.println("Game Time is set to Unlimited");}
 }
+}
 
 // Sets Lighting-Ambience
 BLYNK_WRITE(V6) {
 int b=param.asInt();
+if (LOCKOUT==false){
 if (b==1) {ToESP32=601; SendESP32Data(); Serial.println("Lighting/Ambience is set to Outdoor Mode");}
 if (b==2) {ToESP32=602; SendESP32Data(); Serial.println("Lighting/Ambience is set to Indoor Mode");}
 if (b==3) {ToESP32=603; SendESP32Data(); Serial.println("Lighting/Ambience is set to Stealth");}
+}
 }
 
 // Sets Team Modes
 BLYNK_WRITE(V7) {
 int b=param.asInt();
+if (LOCKOUT==false){
 if (b==1) {ToESP32=701; SendESP32Data(); Serial.println("Teams is set to Free For All");}
 if (b==2) {ToESP32=702; SendESP32Data(); Serial.println("Teams is set to Two Teams (odds/evens)");}
 if (b==3) {ToESP32=703; SendESP32Data(); Serial.println("Teams is set to Three Teams (every three)");}
 if (b==4) {ToESP32=704; SendESP32Data(); Serial.println("Teams is set to Four Teams (every four)");}
 if (b==5) {ToESP32=705; SendESP32Data(); Serial.println("Teams is set to Player's Choice");}
 }
+}
 
 // Sets Game Mode
 BLYNK_WRITE(V8) {
 int b=param.asInt();
+if (LOCKOUT==false){
 if (b==1) {ToESP32=801; SendESP32Data(); Serial.println("Game Mode is set to Death Match");}
 if (b==2) {ToESP32=802; SendESP32Data(); Serial.println("Game Mode is set to Capture the Flag");}
 if (b==3) {ToESP32=803; SendESP32Data(); Serial.println("Game Mode is set to Assault");}
@@ -807,10 +825,12 @@ if (b==9) {ToESP32=809; SendESP32Data(); Serial.println("Game Mode is set to Gun
 if (b==10) {ToESP32=810; SendESP32Data(); Serial.println("Game Mode is set to Domination");}
 if (b==11) {ToESP32=811; SendESP32Data(); Serial.println("Game Mode is set to Battle Royale");}
 }
+}
 
 // Sets Respawn Mode
 BLYNK_WRITE(V9) {
 int b=param.asInt();
+if (LOCKOUT==false){
 if (b==1) {ToESP32=901; SendESP32Data(); Serial.println("Respawn is set to Immediate (auto)");}
 if (b==2) {ToESP32=902; SendESP32Data(); Serial.println("Respawn is set to 15 seconds (auto)");}
 if (b==3) {ToESP32=903; SendESP32Data(); Serial.println("Respawn is set to 30 seconds (auto)");}
@@ -821,10 +841,12 @@ if (b==7) {ToESP32=907; SendESP32Data(); Serial.println("Respawn is set to Ramp 
 if (b==8) {ToESP32=908; SendESP32Data(); Serial.println("Respawn is set to Ramp 90 (auto)");}
 if (b==9) {ToESP32=909; SendESP32Data(); Serial.println("Respawn is set to Respawn Station (manual)");}
 }
+}
 
 // Sets Delayed Start Time
 BLYNK_WRITE(V10) {
 int b=param.asInt();
+if (LOCKOUT==false){
 if (b==1) {ToESP32=1001; SendESP32Data(); Serial.println("Delayed Start is set to Immediate");}
 if (b==2) {ToESP32=1002; SendESP32Data(); Serial.println("Delayed Start is set to 15 seconds");}
 if (b==3) {ToESP32=1003; SendESP32Data(); Serial.println("Delayed Start is set to 30 seconds");}
@@ -835,46 +857,57 @@ if (b==7) {ToESP32=1007; SendESP32Data(); Serial.println("Delayed Start is set t
 if (b==8) {ToESP32=1008; SendESP32Data(); Serial.println("Delayed Start is set to 10 Minutes");}
 if (b==9) {ToESP32=1009; SendESP32Data(); Serial.println("Delayed Start is set to 15 Minutes");}
 }
+}
 
 // Sends Request for Score Syncing
 BLYNK_WRITE(V11) {
 int b=param.asInt();
+if (LOCKOUT==false){
 if (b==1) {ToESP32=1101; SendESP32Data(); Serial.println("Score Sync Request Sent");}
+}
 }
 
 // Sets Player Gender
 BLYNK_WRITE(V12) {
 int b=param.asInt();
+if (LOCKOUT==false){
 if (b==0) {ToESP32=1200; SendESP32Data(); Serial.println("Player Gender is set to Male");}
 if (b==1) {ToESP32=1201; SendESP32Data(); Serial.println("Player Gender is set to Female");}
+}
 }
 
 // Sets Ammo Settings
 BLYNK_WRITE(V13) {
 int b=param.asInt();
+if (LOCKOUT==false){
 if (b==3) {ToESP32=1303; SendESP32Data(); Serial.println("Ammo Settings is set to Ulimited Rounds");}
 if (b==2) {ToESP32=1302; SendESP32Data(); Serial.println("Ammo Settings is set to Unlimited Magazines");}
 if (b==1) {ToESP32=1301; SendESP32Data(); Serial.println("Ammo Settings is set to Limited");}
+}
 }
 
 // Sets Friendly Fire
 BLYNK_WRITE(V14) {
 int b=param.asInt();
+if (LOCKOUT==false){
 if (b==0) {ToESP32=1400; SendESP32Data(); Serial.println("Friendly Fire is set to Off");}
 if (b==1) {ToESP32=1401; SendESP32Data(); Serial.println("Friendly Fire is set to On");}
+}
 }
 
 // Sets Unasigned still, space holder for additional settings
 BLYNK_WRITE(V15) {
 int b=param.asInt();
+if (LOCKOUT==false){
 ToESP32 = (1500+b); SendESP32Data(); Serial.println("Volume is set to " + String(ToESP32));
+}
 }
 
 // Start/Ends a game
 BLYNK_WRITE(V16) {
 int b=param.asInt();
-if (b==0) {ToESP32=1600; SendESP32Data(); Serial.println("End Game is set to unpressed");}
-if (b==1) {ToESP32=1601; SendESP32Data(); Serial.println("Start Game is set to pressed");}
+if (b==0) {ToESP32=1600; SendESP32Data(); Serial.println("End Game is set to unpressed"); LOCKOUT=false; Serial.println("Lockout Dis-Engaged");}
+if (b==1) {ToESP32=1601; SendESP32Data(); Serial.println("Start Game is set to pressed"); LOCKOUT=true; Serial.println("Lockout Engaged");}
 // if (b==1) {ToESP32=1601; SendESP32Data(); Serial.println("Start Game is set to pressed"); GAMESTART=true; gamestart=millis();}
 }
 //*****************************************************************************************
@@ -897,7 +930,7 @@ void setup()
 //**********************************************************************************
 //****************************  UPDATE THIS SECTION!!!!! ***************************
 //**********************************************************************************
-  //Blynk.begin(auth, ssid, pass, IPAddress(192,168,1,80), 8080);
+  // Blynk.begin(auth, ssid, pass, IPAddress(192,168,1,80), 8080);
   Blynk.begin(auth, ssid, pass);
 //**********************************************************************************
 //****************************  UPDATE THIS SECTION!!!!! ***************************
