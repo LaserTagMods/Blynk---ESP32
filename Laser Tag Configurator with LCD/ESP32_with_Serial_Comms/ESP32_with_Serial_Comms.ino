@@ -27,6 +27,7 @@
  * updated 4/28/2020 adjusted volume settings to modify volume not at game start but whenever
  * updated 5/5/2020 modified the delayed start counter to work better and not stop the program as well as incorporate auditable countdown
  * updated 5/5/2020 incorporated respawn delay timers as well as respawn stations for manual respawn
+ * updated 5/6/2020 fixed count down audio for respawn and delay start timers, also fixed lives assignment, was adding 100 to the lives selected. Note: all 5/5/2020 updates tested functional
  *
  * Written by Jay Burden
  *
@@ -876,8 +877,8 @@ void delaystart() {
   while (DelayStart > actualdelay) { // this creates a sub loop in the object to keep doing the following steps until this condition is met... actual delay is the same as planned delay
     delaycounter = millis(); // sets the delay clock to the current progam timer
     actualdelay = delaycounter - delaybeginning; // calculates how long weve been delaying the program/start
-    if (actualdelay < 10000) {audibletrigger++;} // a check to start adding value to the audible trigger
-    if (audibletrigger == 1) {sendString("$PLAY,VA83,4,6,,,,,*");} // this can only happen once so it doesnt keep looping in the program we only play it when trigger is equal to 1
+    if ((DelayStart-actualdelay) < 10000) {audibletrigger++;} // a check to start adding value to the audible trigger
+    if (audibletrigger == 1) {sendString("$PLAY,VA83,4,6,,,,,*"); Serial.println("Playing ten second countdown");} // this can only happen once so it doesnt keep looping in the program we only play it when trigger is equal to 1
   }
   }
   sendString("$PLAY,VA81,4,6,,,,,*"); // plays the .. nevermind
@@ -959,8 +960,8 @@ void respawnplayer() {
   while (RespawnTimer > actualdelay) { // this creates a sub loop in the object to keep doing the following steps until this condition is met... actual delay is the same as planned delay
     delaycounter = millis(); // sets the delay clock to the current progam timer
     actualdelay = delaycounter - delaybeginning; // calculates how long weve been delaying the program/start
-    if (actualdelay < 3000) {audibletrigger++;} // a check to start adding value to the audible trigger
-    if (audibletrigger == 1) {sendString("$PLAY,VA80,4,6,,,,,*");} // this can only happen once so it doesnt keep looping in the program we only play it when trigger is equal to 1
+    if ((RespawnTimer-actualdelay) < 3000) {audibletrigger++;} // a check to start adding value to the audible trigger
+    if (audibletrigger == 1) {sendString("$PLAY,VA80,4,6,,,,,*"); Serial.println("playing 3 second countdown");} // this can only happen once so it doesnt keep looping in the program we only play it when trigger is equal to 1
   }
   }
   Serial.println("Respawning Player");
@@ -1055,7 +1056,7 @@ void serialTask(void * params){
       if(readtxt.toInt() > 300 && readtxt.toInt() < 400) {MaxKills=(readtxt.toInt() - 300); Serial.println("Kills to win set to " + String(MaxKills)); AudioSelection="VN8";}
       if(readtxt.toInt()==300) {MaxKills=32000; Serial.println("Kills to win set to Unlimited"); AudioSelection="VA6V";}
       // setting player lives
-      if(readtxt.toInt() > 400 && readtxt.toInt() < 500) {SetLives=(readtxt.toInt() - 300); Serial.println("Player Lives set to " + String(PlayerLives)); AudioSelection="VA47";}
+      if(readtxt.toInt() > 400 && readtxt.toInt() < 500) {SetLives=(readtxt.toInt() - 400); Serial.println("Player Lives set to " + String(PlayerLives)); AudioSelection="VA47";}
       if(readtxt.toInt()==400) {PlayerLives=32000; Serial.println("Kills to win set to Unlimited"); AudioSelection="VA6V";}
       // setting game time
       if(readtxt.toInt()==501) {SetTime=60000; Serial.println("Game time set to 1 minute"); AudioSelection="VA0V";}
