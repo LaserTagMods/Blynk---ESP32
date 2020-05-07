@@ -30,6 +30,7 @@
  * updated 5/6/2020 fixed count down audio for respawn and delay start timers, also fixed lives assignment, was adding 100 to the lives selected. Note: all 5/5/2020 updates tested functional
  * updated 5/6/2020 fixed game timer repeat end, added two minute warning, one minute warning and ten second count down to end of game
  * updated 5/6/2020 re-instated three team selection and added four team auto selections
+ * updated 5/7/2020 disabled player manual selections when triggered by blynk for a new option to be enabled or if game starts (cant give them players too much credit can we?)
  *
  *
  * Written by Jay Burden
@@ -1281,9 +1282,9 @@ void loop() {
     // here we put in processes to run based upon conditions to make a game function
 
     if (TAGGERUPDATE1) {TAGGERUPDATE=false; Serial.println("Disabled LCD Data Send");}
-    if (settingsallowed1==3) {Serial.println("Team Settings requested"); delay(250); GETTEAM=true; settingsallowed1=0;}
-    if (settingsallowed1==1) {Serial.println("Weapon Slot 0 Requested"); delay(250); GETSLOT0=true; settingsallowed1=0;}
-    if (settingsallowed1==2) {Serial.println("Weapon Slot 1 Requested"); delay(250); GETSLOT1=true; settingsallowed1=0;}
+    if (settingsallowed1==3) {Serial.println("Team Settings requested"); delay(250); GETTEAM=true; GETSLOT0=false; GETSLOT1=false; settingsallowed1=0;}
+    if (settingsallowed1==1) {Serial.println("Weapon Slot 0 Requested"); delay(250); GETSLOT0=true; GETSLOT1=false; GETTEAM=false; settingsallowed1=0;}
+    if (settingsallowed1==2) {Serial.println("Weapon Slot 1 Requested"); delay(250); GETSLOT1=true; GETSLOT0=false; GETTEAM=false; settingsallowed1=0;}
     if (settingsallowed>0) {Serial.println("manual settings requested"); settingsallowed1=settingsallowed;} // this is triggered if a manual option is required for game settings
     if (RESPAWN) { // checks if auto respawn was triggered to respawn a player
       respawnplayer(); // respawns player
@@ -1305,9 +1306,13 @@ void loop() {
       Audio();
     }
     if (GAMESTART) {
-      gameconfigurator();
-      delaystart();
-      GAMESTART = false;
+      // need to turn off the trigger audible selections if a player didnt press alt fire to confirm
+      GETSLOT0=false; 
+      GETSLOT1=false; 
+      GETTEAM=false;
+      gameconfigurator(); // send all game settings, weapons etc. 
+      delaystart(); // enable the start based upon delay selected
+      GAMESTART = false; // disables the trigger so this doesnt loop/
     }
     if (OutofAmmoA) {
       weaponsettingsA();      
