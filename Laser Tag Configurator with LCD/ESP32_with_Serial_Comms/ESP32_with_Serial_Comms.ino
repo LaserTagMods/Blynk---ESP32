@@ -31,7 +31,7 @@
  * updated 5/6/2020 fixed game timer repeat end, added two minute warning, one minute warning and ten second count down to end of game
  * updated 5/6/2020 re-instated three team selection and added four team auto selections
  * updated 5/7/2020 disabled player manual selections when triggered by blynk for a new option to be enabled or if game starts (cant give them players too much credit can we?)
- *
+ * updated 5/8/2020 fixed a bug with the count down game timer announcements
  *
  * Written by Jay Burden
  *
@@ -354,6 +354,9 @@ bool STATUSCHANGE=false; // used to loop through selectable customized options
 bool GETSLOT0=false; // used for configuring manual weapon selection
 bool GETSLOT1=false; // used for configuring manual weapon selection
 bool INGAME=false; // status check for game timer and other later for running certain checks if gun is in game.
+bool COUNTDOWN1=false; // used for triggering a specic countdown
+bool COUNTDOWN2=false; // used for triggering a specific countdown
+bool COUNTDOWN3=false; // used for triggering a specific countdown
 
 long startScan = 0; // part of BLE enabling
 
@@ -609,7 +612,7 @@ static void notifyCallback(
         if (PlayerLives > 0 && SetRSPNMode == 9) {
           // run manual respawn object
         }
-        if (PlayerLives == 0) {GAMEOVER=true;}
+        if (PlayerLives == 0) {GAMEOVER=true; AudioSelection1="VA46"; AUDIO1=true; Serial.println("lives depleted");}
       }
     }
   } else {
@@ -890,7 +893,15 @@ void delaystart() {
   sendString("$SPAWN,,*");
   Serial.println("Delayed Start Complete, should be in game play mode now");
   GameStartTime=millis();
+  GAMEOVER=false;
   INGAME=true;
+  if (GameTimer > 120000) {
+    COUNTDOWN1=true;
+    Serial.println("enabled countdown timer 1");
+    } else {
+      COUNTDOWN3=true;
+    Serial.println("enabled countdown timer 3");
+      } // enables the appropriate countdown announcements
 }
 
 //******************************************************************************************
@@ -947,6 +958,9 @@ void gameover() {
   sendString("$PLAY,VS6,4,6,,,,,*"); // says game over
   GAMEOVER = false;
   INGAME=false;
+  COUNTDOWN1=false;
+  COUNTDOWN2=false;
+  COUNTDOWN3=false;
 }
 
 //******************************************************************************************
@@ -1279,32 +1293,25 @@ void loop() {
     //pRemoteCharacteristic->writeValue(newValue.c_str(), newValue.length());
     //pRemoteCharacteristic->writeValue((uint8_t*)newValue.c_str(), newValue.length(),true);
     
-    // here we put in processes to run based upon conditions to make a game function
-
-    if (TAGGERUPDATE1) {TAGGERUPDATE=false; Serial.println("Disabled LCD Data Send");}
-    if (settingsallowed1==3) {Serial.println("Team Settings requested"); delay(250); GETTEAM=true; GETSLOT0=false; GETSLOT1=false; settingsallowed1=0;}
-    if (settingsallowed1==1) {Serial.println("Weapon Slot 0 Requested"); delay(250); GETSLOT0=true; GETSLOT1=false; GETTEAM=false; settingsallowed1=0;}
-    if (settingsallowed1==2) {Serial.println("Weapon Slot 1 Requested"); delay(250); GETSLOT1=true; GETSLOT0=false; GETTEAM=false; settingsallowed1=0;}
-    if (settingsallowed>0) {Serial.println("manual settings requested"); settingsallowed1=settingsallowed;} // this is triggered if a manual option is required for game settings
-    if (RESPAWN) { // checks if auto respawn was triggered to respawn a player
-      respawnplayer(); // respawns player
-    }
-    if (MANUALRESPAWN) { // checks if manual respawn was triggered to respawn a player
-      ManualRespawnMode();
-    }
-    if (GAMEOVER) { // checks if something triggered game over (out of lives, objective met)
-      gameover(); // runs object to kick player out of game
-    }
-    if (VOLUMEADJUST) {
-      VOLUMEADJUST=false;
-      sendString("$VOL,"+String(SetVol)+",0,*"); // sets max volume on gun 0-100 feet distance
-    }
+    // here we put in processes to run based upon conditions to make a game functions, only runs if not in game
     if (AUDIO) {
       Audio();
     } else {TurnOffAudio=false;}
     if (AUDIO1) {
       Audio();
     }
+    if (INGAME == false) {
+    if (TAGGERUPDATE1) {TAGGERUPDATE=false; Serial.println("Disabled LCD Data Send");}
+    if (settingsallowed1==3) {Serial.println("Team Settings requested"); delay(250); GETTEAM=true; GETSLOT0=false; GETSLOT1=false; settingsallowed1=0;}
+    if (settingsallowed1==1) {Serial.println("Weapon Slot 0 Requested"); delay(250); GETSLOT0=true; GETSLOT1=false; GETTEAM=false; settingsallowed1=0;}
+    if (settingsallowed1==2) {Serial.println("Weapon Slot 1 Requested"); delay(250); GETSLOT1=true; GETSLOT0=false; GETTEAM=false; settingsallowed1=0;}
+    if (settingsallowed>0) {Serial.println("manual settings requested"); settingsallowed1=settingsallowed;} // this is triggered if a manual option is required for game settings
+    
+    if (VOLUMEADJUST) {
+      VOLUMEADJUST=false;
+      sendString("$VOL,"+String(SetVol)+",0,*"); // sets max volume on gun 0-100 feet distance
+    }
+    
     if (GAMESTART) {
       // need to turn off the trigger audible selections if a player didnt press alt fire to confirm
       GETSLOT0=false; 
@@ -1314,6 +1321,12 @@ void loop() {
       delaystart(); // enable the start based upon delay selected
       GAMESTART = false; // disables the trigger so this doesnt loop/
     }
+    }
+    // In game checks and balances to execute actions for in game functions
+    if (INGAME) {
+    long ActualGameTime = millis() - GameStartTime;
+    long GameTimeRemaining = GameTimer - ActualGameTime;
+    if (ActualGameTime > GameTimer) {GAMEOVER=true; Serial.println("game time expired");}
     if (OutofAmmoA) {
       weaponsettingsA();      
       Serial.println("Weapon Slot 0 has been reloaded, disabling reload");
@@ -1324,14 +1337,24 @@ void loop() {
         Serial.println("Weapon Slot 1 has been reloaded, disabling reload");
         OutofAmmoB=false;
     }
-    // game settings and objective completion checks:
-    if (INGAME) {
-      long ActualGameTime = millis() - GameStartTime;
-      long GameTimeRemaining = ActualGameTime - GameTimer;
-    if (ActualGameTime > GameTimer) {GAMEOVER=true; Serial.println("game time expired"); GameStartTime=0;}
-    if (GameTimeRemaining > 119650 && GameTimeRemaining < 120350) {AudioSelection1="VSD"; AUDIO1=true;}
-    if (GameTimeRemaining > 59650 && GameTimeRemaining < 60350) {AudioSelection1="VSA"; AUDIO1=true;}
-    if (GameTimeRemaining > 9650 && GameTimeRemaining < 10350) {AudioSelection1="VS84"; AUDIO1=true;} 
+    if (RESPAWN) { // checks if auto respawn was triggered to respawn a player
+      respawnplayer(); // respawns player
+    }
+    if (MANUALRESPAWN) { // checks if manual respawn was triggered to respawn a player
+      ManualRespawnMode();
+    }
+    if (GAMEOVER) { // checks if something triggered game over (out of lives, objective met)
+      gameover(); // runs object to kick player out of game
+    }
+    if (COUNTDOWN1) {
+    if (GameTimeRemaining < 120001) {AudioSelection1="VSD"; AUDIO1=true; COUNTDOWN1=false; COUNTDOWN2=true; Serial.println("2 minutes remaining");} // two minute warning
+    }
+    if (COUNTDOWN2) {
+    if (GameTimeRemaining < 60001) {AudioSelection1="VSA"; AUDIO1=true; COUNTDOWN2=false; COUNTDOWN3=true; Serial.println("1 minute remaining");} // one minute warning
+    }
+    if (COUNTDOWN3) {
+    if (GameTimeRemaining < 10001) {AudioSelection1="VA83"; AUDIO1=true; COUNTDOWN3=false; Serial.println("ten seconds remaining");} // ten second count down
+    }
     }
     
 //************************************************************************************
