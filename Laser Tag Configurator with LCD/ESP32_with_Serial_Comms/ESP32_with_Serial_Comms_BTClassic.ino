@@ -400,10 +400,6 @@ void notifyCallback() {
       if (tokenStrings[1] == "0") {
         if (tokenStrings[2] == "1") {
           Serial.println("Trigger pulled"); // as indicated this is the trigger
-        }
-        if (tokenStrings[2] == "0") {
-          Serial.println("Trigger Released"); // goes without sayin... you let go of the trigger
-          // upon release of a trigger, team settings can be changed if the proper allowance is in place
           if (GETTEAM) { // used for configuring manual team selection
             if (Team == 5) {
               Team = 0;
@@ -700,9 +696,6 @@ void notifyCallback() {
       if (tokenStrings[1] == "1") {
         if (tokenStrings[2] == "1") {
           Serial.println("Alt fire pulled"); // yeah.. you pushed the red/yellow button
-        }
-        if (tokenStrings[2] == "0") {
-          Serial.println("Alt fire Released"); // now you released the button
           if (GETTEAM) {
             GETTEAM = false;
             AudioSelection1 = "VAO";
