@@ -1,3 +1,4 @@
+
 /*
    update 4/2/2020 annotations added and copied over objects for setting up games
    update 4/3/2020 Cleaned up for more compatibility to serial comms programing
@@ -231,27 +232,19 @@
 
 
 //****************************************************************
-// libraries to include:
-#include "BluetoothSerial.h"
-
-BluetoothSerial SerialBT;
+// libraries to include
 
 #include <HardwareSerial.h>
-HardwareSerial SerialLCD( 1 );
+HardwareSerial SerialBT( 1 );
 //****************************************************************
 
 //******************* IMPORTANT *********************
 //******************* IMPORTANT *********************
 //******************* IMPORTANT *********************
 //*********** YOU NEED TO CHANGE INFO IN HERE FOR EACH GUN!!!!!!***********
-#define BLE_SERVER_SERVICE_NAME "jayeburden" // CHANGE ME!!!!
 // this is important it is how we filter
 // out unwanted guns or other devices that use UART BLE characteristics you need to change
 // this to the name of the gun ble server
-
-String MACadd = "AA:BB:CC:11:22:33";
-uint8_t address[6]  = {0xAA, 0xBB, 0xCC, 0x11, 0x22, 0x33};
-char *pin = "1234";
 int GunID = 0; // this is the gun or player ID, each esp32 needs a different one, set "0-63"
 //******************* IMPORTANT *********************
 //******************* IMPORTANT *********************
@@ -260,8 +253,9 @@ int GunID = 0; // this is the gun or player ID, each esp32 needs a different one
 //****************************************************************
 // variables used for ble set up
 static boolean doConnect = false;
-static boolean connected = false;
+bool CONNECTED = false;
 static boolean doScan = false;
+bool DISCONNECT = false;
 
 
 // variables used to provide notifications of pairing device
@@ -350,19 +344,10 @@ bool WEAP = false; // not used anymore but was used to auto load gun settings on
 
 void notifyCallback() {
 
-  while (SerialBT.available()) {
-    notifyData[notifyDataIndex] = SerialBT.read();
-    notifyDataIndex++;
-  }
-  Serial.print("Received : ");
-  for(int i=0;i<notifyDataIndex;i++)
-    Serial.print(notifyData[i]);
-  Serial.println();
-  if (notifyData[notifyDataIndex - 1] == '*') { // complete receviing
-    notifyData[notifyDataIndex] = '\0';
-    notifyDataIndex = 0; // reset index
-    //Lets tokenize by ","
-    String receData = notifyData;
+  if (SerialBT.available()) {
+    String receData = SerialBT.readStringUntil('*');
+    Serial.print("Received: ");
+    Serial.println(receData); // this is printing... 
     byte index = 0;
     ptr = strtok((char*)receData.c_str(), ",");  // takes a list of delimiters
     while (ptr != NULL)
@@ -371,12 +356,22 @@ void notifyCallback() {
       index++;
       ptr = strtok(NULL, ",");  // takes a list of delimiters
     }
-    Serial.println("We have found " + String(index ) + " tokens");
+    Serial.println("We have found " + String(index ) + " tokens"); // this isnt breaking out the characters...
+    for(int i=0;i<index;i++){
+      Serial.print(tokenStrings[i]);
+      Serial.print(':');
+    }
+    Serial.println();
+
+    // this assignment of the string array isnt working... i know because i have conditional statements below that arent working when certain buttons are pressed.
+    
 
     //*******************************************************
     // first signal we get from gun is this one and it tells the esp
-    // that gun is happy with the connection
-    if (tokenStrings[0] == "$#CONNECT") {
+    // that gun is happy with the connection, when the gun pairs it sends this
+    //This could be because, GUN sends this when it connects with the HC05. But ESP32 is late here.
+    // if i kill power to hc-05 now then re power, it should show then... nope, no receive data... hang on..
+    if (tokenStrings[0] == "$#CONNECT") { // not seeing this pop up... 
       AudioSelection1 = "VA20";
       AUDIO1 = true;
     }
@@ -449,13 +444,13 @@ void notifyCallback() {
             }
             STATUSCHANGE = false;
           }
-          if (GETSLOT0) { // used for configuring manual team selection
+          if (GETSLOT0) { // used for configuring manual team selection for weapon 0
             if (SLOTA == 19) {
               SLOTA = 1;
               STATUSCHANGE = true;
               AudioSelection1 = "VA01";
               AUDIO1 = true;
-              Serial.println("Weapon changed from 19 to 1");
+              Serial.println("Weapon changed from 19 to 1"); // one o these should have popped up in the monitor
             }
             if (SLOTA == 18) {
               SLOTA = 19;  //
@@ -834,9 +829,9 @@ void notifyCallback() {
         }
       }
     }
-  } else {
-    //hold data and keep receving
   }
+  
+
 }
 
 
@@ -939,7 +934,7 @@ void sendString(String value) {
   const char * c_string = value.c_str();
   uint8_t buf[21] = {0};
   int sentSize = 0;
-  Serial.println("sending ");
+  Serial.println("sending " + String(value));
   /*if (value.length() > 20) {
     for (int i = 0; i < value.length() / 20; i++) {
       memcpy(buf, c_string + i * 20, 20);
@@ -953,10 +948,10 @@ void sendString(String value) {
     for (int i = 0; i < remaining; i++)
       Serial.print((char)buf[i]);
     Serial.println();
-  }
-  else {
+    }
+    else {
     SerialBT.write((uint8_t*)value.c_str());
-  }*/
+    }*/
   SerialBT.print(value);
 }
 
@@ -1451,12 +1446,11 @@ void SyncScores() {
   if (SetTeam == 100) {
     // create a string that looks like this:
     // (Player ID, token 0), (Player Team, token 1), (Player Objective Score, token 2) (Team scores, tokens 3-8), (player kill counts, tokens 9-72
-    String LCDText = String(GunID) + "," + String(Team) + "," + String(CompletedObjectives) + "," + String(TeamKillCount[0])+ "," + String(TeamKillCount[1]) + "," + String(TeamKillCount[2]) + "," + String(TeamKillCount[3]) + "," + String(TeamKillCount[4]) + "," + String(TeamKillCount[5]) + "," + String(PlayerKillCount[0]) + "," + String(PlayerKillCount[1]) + "," + String(PlayerKillCount[2]) + "," + String(PlayerKillCount[3]) + "," + String(PlayerKillCount[4]) + "," + String(PlayerKillCount[5]) + "," + String(PlayerKillCount[6]) + "," + String(PlayerKillCount[7]) + "," + String(PlayerKillCount[8]) + "," + String(PlayerKillCount[9]) + "," + String(PlayerKillCount[10]) + "," + String(PlayerKillCount[11]) + "," + String(PlayerKillCount[12]) + "," + String(PlayerKillCount[13]) + "," + String(PlayerKillCount[14]) + "," + String(PlayerKillCount[15]) + "," + String(PlayerKillCount[16]) + "," + String(PlayerKillCount[17]) + "," + String(PlayerKillCount[18]) + "," + String(PlayerKillCount[19]) + "," + String(PlayerKillCount[20]) + "," + String(PlayerKillCount[21]) + "," + String(PlayerKillCount[22]) + "," + String(PlayerKillCount[23]) + "," + String(PlayerKillCount[24]) + "," + String(PlayerKillCount[25]) + "," + String(PlayerKillCount[26]) + "," + String(PlayerKillCount[27]) + "," + String(PlayerKillCount[28]) + "," + String(PlayerKillCount[29]) + "," + String(PlayerKillCount[30]) + "," + String(PlayerKillCount[31]) + "," + String(PlayerKillCount[32]) + "," + String(PlayerKillCount[33]) + "," + String(PlayerKillCount[34]) + "," + String(PlayerKillCount[35]) + "," + String(PlayerKillCount[36]) + "," + String(PlayerKillCount[37]) + "," + String(PlayerKillCount[38]) + "," + String(PlayerKillCount[39]) + "," + String(PlayerKillCount[40]) + "," + String(PlayerKillCount[41]) + "," + String(PlayerKillCount[42]) + "," + String(PlayerKillCount[43]) + "," + String(PlayerKillCount[44]) + "," + String(PlayerKillCount[45]) + "," + String(PlayerKillCount[46]) + "," + String(PlayerKillCount[47]) + "," + String(PlayerKillCount[48]) + "," + String(PlayerKillCount[49]) + "," + String(PlayerKillCount[50]) + "," + String(PlayerKillCount[51]) + "," + String(PlayerKillCount[52]) + "," + String(PlayerKillCount[53]) + "," + String(PlayerKillCount[54]) + "," + String(PlayerKillCount[55]) + "," + String(PlayerKillCount[56]) + "," + String(PlayerKillCount[57]) + "," + String(PlayerKillCount[58]) + "," + String(PlayerKillCount[59]) + "," + String(PlayerKillCount[60]) + "," + String(PlayerKillCount[61]) + "," + String(PlayerKillCount[62]) + "," + String(PlayerKillCount[63]);
+    String LCDText = String(GunID) + "," + String(Team) + "," + String(CompletedObjectives) + "," + String(TeamKillCount[0]) + "," + String(TeamKillCount[1]) + "," + String(TeamKillCount[2]) + "," + String(TeamKillCount[3]) + "," + String(TeamKillCount[4]) + "," + String(TeamKillCount[5]) + "," + String(PlayerKillCount[0]) + "," + String(PlayerKillCount[1]) + "," + String(PlayerKillCount[2]) + "," + String(PlayerKillCount[3]) + "," + String(PlayerKillCount[4]) + "," + String(PlayerKillCount[5]) + "," + String(PlayerKillCount[6]) + "," + String(PlayerKillCount[7]) + "," + String(PlayerKillCount[8]) + "," + String(PlayerKillCount[9]) + "," + String(PlayerKillCount[10]) + "," + String(PlayerKillCount[11]) + "," + String(PlayerKillCount[12]) + "," + String(PlayerKillCount[13]) + "," + String(PlayerKillCount[14]) + "," + String(PlayerKillCount[15]) + "," + String(PlayerKillCount[16]) + "," + String(PlayerKillCount[17]) + "," + String(PlayerKillCount[18]) + "," + String(PlayerKillCount[19]) + "," + String(PlayerKillCount[20]) + "," + String(PlayerKillCount[21]) + "," + String(PlayerKillCount[22]) + "," + String(PlayerKillCount[23]) + "," + String(PlayerKillCount[24]) + "," + String(PlayerKillCount[25]) + "," + String(PlayerKillCount[26]) + "," + String(PlayerKillCount[27]) + "," + String(PlayerKillCount[28]) + "," + String(PlayerKillCount[29]) + "," + String(PlayerKillCount[30]) + "," + String(PlayerKillCount[31]) + "," + String(PlayerKillCount[32]) + "," + String(PlayerKillCount[33]) + "," + String(PlayerKillCount[34]) + "," + String(PlayerKillCount[35]) + "," + String(PlayerKillCount[36]) + "," + String(PlayerKillCount[37]) + "," + String(PlayerKillCount[38]) + "," + String(PlayerKillCount[39]) + "," + String(PlayerKillCount[40]) + "," + String(PlayerKillCount[41]) + "," + String(PlayerKillCount[42]) + "," + String(PlayerKillCount[43]) + "," + String(PlayerKillCount[44]) + "," + String(PlayerKillCount[45]) + "," + String(PlayerKillCount[46]) + "," + String(PlayerKillCount[47]) + "," + String(PlayerKillCount[48]) + "," + String(PlayerKillCount[49]) + "," + String(PlayerKillCount[50]) + "," + String(PlayerKillCount[51]) + "," + String(PlayerKillCount[52]) + "," + String(PlayerKillCount[53]) + "," + String(PlayerKillCount[54]) + "," + String(PlayerKillCount[55]) + "," + String(PlayerKillCount[56]) + "," + String(PlayerKillCount[57]) + "," + String(PlayerKillCount[58]) + "," + String(PlayerKillCount[59]) + "," + String(PlayerKillCount[60]) + "," + String(PlayerKillCount[61]) + "," + String(PlayerKillCount[62]) + "," + String(PlayerKillCount[63]);
   } else {
-    String LCDText = String(GunID) + "," + String(SetTeam) + "," + String(CompletedObjectives) + "," + String(TeamKillCount[0]) +"," + String(TeamKillCount[1]) + "," + String(TeamKillCount[2]) + "," + String(TeamKillCount[3]) + "," + String(TeamKillCount[4]) + "," + String(TeamKillCount[5]) + "," + String(PlayerKillCount[0]) + "," + String(PlayerKillCount[1]) + "," + String(PlayerKillCount[2]) + "," + String(PlayerKillCount[3]) + "," + String(PlayerKillCount[4]) + "," + String(PlayerKillCount[5]) + "," + String(PlayerKillCount[6]) + "," + String(PlayerKillCount[7]) + "," + String(PlayerKillCount[8]) + "," + String(PlayerKillCount[9]) + "," + String(PlayerKillCount[10]) + "," + String(PlayerKillCount[11]) + "," + String(PlayerKillCount[12]) + "," + String(PlayerKillCount[13]) + "," + String(PlayerKillCount[14]) + "," + String(PlayerKillCount[15]) + "," + String(PlayerKillCount[16]) + "," + String(PlayerKillCount[17]) + "," + String(PlayerKillCount[18]) + "," + String(PlayerKillCount[19]) + "," + String(PlayerKillCount[20]) + "," + String(PlayerKillCount[21]) + "," + String(PlayerKillCount[22]) + "," + String(PlayerKillCount[23]) + "," + String(PlayerKillCount[24]) + "," + String(PlayerKillCount[25]) + "," + String(PlayerKillCount[26]) + "," + String(PlayerKillCount[27]) + "," + String(PlayerKillCount[28]) + "," + String(PlayerKillCount[29]) + "," + String(PlayerKillCount[30]) + "," + String(PlayerKillCount[31]) + "," + String(PlayerKillCount[32]) + "," + String(PlayerKillCount[33]) + "," + String(PlayerKillCount[34]) + "," + String(PlayerKillCount[35]) + "," + String(PlayerKillCount[36]) + "," + String(PlayerKillCount[37]) + "," + String(PlayerKillCount[38]) + "," + String(PlayerKillCount[39]) + "," + String(PlayerKillCount[40]) + "," + String(PlayerKillCount[41]) + "," + String(PlayerKillCount[42]) + "," + String(PlayerKillCount[43]) + "," + String(PlayerKillCount[44]) + "," + String(PlayerKillCount[45]) + "," + String(PlayerKillCount[46]) + "," + String(PlayerKillCount[47]) + "," + String(PlayerKillCount[48]) + "," + String(PlayerKillCount[49]) + "," + String(PlayerKillCount[50]) + "," + String(PlayerKillCount[51]) + "," + String(PlayerKillCount[52]) + "," + String(PlayerKillCount[53]) + "," + String(PlayerKillCount[54]) + "," + String(PlayerKillCount[55]) + "," + String(PlayerKillCount[56]) + "," + String(PlayerKillCount[57]) + "," + String(PlayerKillCount[58]) + "," + String(PlayerKillCount[59]) + "," + String(PlayerKillCount[60]) + "," + String(PlayerKillCount[61]) + "," + String(PlayerKillCount[62]) + "," + String(PlayerKillCount[63]);
+    String LCDText = String(GunID) + "," + String(SetTeam) + "," + String(CompletedObjectives) + "," + String(TeamKillCount[0]) + "," + String(TeamKillCount[1]) + "," + String(TeamKillCount[2]) + "," + String(TeamKillCount[3]) + "," + String(TeamKillCount[4]) + "," + String(TeamKillCount[5]) + "," + String(PlayerKillCount[0]) + "," + String(PlayerKillCount[1]) + "," + String(PlayerKillCount[2]) + "," + String(PlayerKillCount[3]) + "," + String(PlayerKillCount[4]) + "," + String(PlayerKillCount[5]) + "," + String(PlayerKillCount[6]) + "," + String(PlayerKillCount[7]) + "," + String(PlayerKillCount[8]) + "," + String(PlayerKillCount[9]) + "," + String(PlayerKillCount[10]) + "," + String(PlayerKillCount[11]) + "," + String(PlayerKillCount[12]) + "," + String(PlayerKillCount[13]) + "," + String(PlayerKillCount[14]) + "," + String(PlayerKillCount[15]) + "," + String(PlayerKillCount[16]) + "," + String(PlayerKillCount[17]) + "," + String(PlayerKillCount[18]) + "," + String(PlayerKillCount[19]) + "," + String(PlayerKillCount[20]) + "," + String(PlayerKillCount[21]) + "," + String(PlayerKillCount[22]) + "," + String(PlayerKillCount[23]) + "," + String(PlayerKillCount[24]) + "," + String(PlayerKillCount[25]) + "," + String(PlayerKillCount[26]) + "," + String(PlayerKillCount[27]) + "," + String(PlayerKillCount[28]) + "," + String(PlayerKillCount[29]) + "," + String(PlayerKillCount[30]) + "," + String(PlayerKillCount[31]) + "," + String(PlayerKillCount[32]) + "," + String(PlayerKillCount[33]) + "," + String(PlayerKillCount[34]) + "," + String(PlayerKillCount[35]) + "," + String(PlayerKillCount[36]) + "," + String(PlayerKillCount[37]) + "," + String(PlayerKillCount[38]) + "," + String(PlayerKillCount[39]) + "," + String(PlayerKillCount[40]) + "," + String(PlayerKillCount[41]) + "," + String(PlayerKillCount[42]) + "," + String(PlayerKillCount[43]) + "," + String(PlayerKillCount[44]) + "," + String(PlayerKillCount[45]) + "," + String(PlayerKillCount[46]) + "," + String(PlayerKillCount[47]) + "," + String(PlayerKillCount[48]) + "," + String(PlayerKillCount[49]) + "," + String(PlayerKillCount[50]) + "," + String(PlayerKillCount[51]) + "," + String(PlayerKillCount[52]) + "," + String(PlayerKillCount[53]) + "," + String(PlayerKillCount[54]) + "," + String(PlayerKillCount[55]) + "," + String(PlayerKillCount[56]) + "," + String(PlayerKillCount[57]) + "," + String(PlayerKillCount[58]) + "," + String(PlayerKillCount[59]) + "," + String(PlayerKillCount[60]) + "," + String(PlayerKillCount[61]) + "," + String(PlayerKillCount[62]) + "," + String(PlayerKillCount[63]);
   }
   Serial.println(LCDText);
-  SerialLCD.println(LCDText);
   Serial.println("Sent LCD data to ESP8266");
 }
 //******************************************************************************************
@@ -1488,15 +1482,14 @@ void serialTask(void * params) {
       }
       String LCDText = String(ammo1) + "," + String(weap) + "," + String(health) + "," + String(armor) + "," + String(shield) + "," + String(PlayerLives) + "," + String(ammo2) + "," + String(GunID);
       Serial.println(LCDText);
-      SerialLCD.println(LCDText);
       Serial.println("Sent LCD data to ESP8266");
       delay(100);
     } else {
       TAGGERUPDATE1 = false;
     }
-    if (SerialLCD.available()) {
-      String readtxt = SerialLCD.readStringUntil('\n');
-      Serial.println(readtxt);
+    if (Serial.available()) {
+      String readtxt = Serial.readStringUntil('\n');
+      //Serial.println(readtxt);
       // set the BLE core to play audio
       // it is important to ensure that all following processes only assign a value
       // for a variable that is used by the other core to process and send BLE data
@@ -1505,7 +1498,7 @@ void serialTask(void * params) {
       // So we set a programing variable, print the change to serial, and make the tagger confirm via audio
       // setting weapon slot 0
       if (readtxt.toInt() == 1) {
-        settingsallowed = 1;
+        settingsallowed = 1; // if a "1" is entered it enables a manual setting to select gun settings...
         AudioSelection = "VA5F";
         SetSlotA = 100;
         Serial.println("Weapon Slot 0 set to Manual");
@@ -1859,39 +1852,12 @@ TaskHandle_t  TaskSerial;
 //******************************************************************************************
 //******************************************************************************************
 //******************************************************************************************
-bool connectToServer() {
-  bool rsl = false;
-  connected = SerialBT.connect(address); // we can use name as well but it is slower
-  if (connected) {
-    rsl = true;
-    Serial.println("Connected Succesfully!");
-  } else {
-    while (!SerialBT.connected(10000)) {
-      Serial.println("Failed to connect. Make sure remote device is available and in range, then restart app.");
-    }
-  }
-  return rsl;
-}
-void callback(esp_spp_cb_event_t event, esp_spp_cb_param_t *param) {
-  if (event == ESP_SPP_SRV_OPEN_EVT) {
-    Serial.println("Client Connected");
-    doConnect = false;
-  }
-  if (event == ESP_SPP_CLOSE_EVT) {
-    Serial.println("Connection Closed");
-    doConnect = true;
-  }
-  if (event == ESP_SPP_DATA_IND_EVT ) {
-    notifyCallback();
-  }
-}
 
 void setup() {
   Serial.begin(115200);
   Serial.println("Starting Arduino BLE Client application...");
-  SerialLCD.begin(9600, SERIAL_8N1, 16, 17); // setting up serial communication with ESP8266 on pins 16/17 w baud rate of 9600
-  delay(5000);
-  SerialBT.register_callback(callback);
+  SerialBT.begin(9600, SERIAL_8N1, 16, 17); // setting up serial communication with ESP8266 on pins 16 as RX/17 as Tx w baud rate of 9600
+  pinMode(4, INPUT); // Status Pin on HC-05, used to determine if paired with a tagger
 
 
 
@@ -1912,25 +1878,18 @@ void setup() {
 
 // This is the Arduino main loop function for the BLE Core.
 void loop() {
-  // the main loop for BLE activity is here, it is devided in three sections....
+  // the main loop for Bluetooth activity is here, it is devided in three sections....
   // sections are for when connected, when not connected and to connect again
 
-  //***********************************************************************************
-  // If the flag "doConnect" is true then we have scanned for and found the desired
-  // BLE Server with which we wish to connect.  Now we connect to it.  Once we are
-  // connected we set the connected flag to be true.
-  if (doConnect == true) {
-    if (connectToServer()) {
-      Serial.println("We are now connected to the BLE Server.");
-      doConnect = false; // stop trying to make the connection.
-    } else {
-      Serial.println("We have failed to connect to the server; there is nothin more we will do.");
-    }
-  }
-  //*************************************************************************************
+  //check if anything is received on the Bluetooth.
+  notifyCallback();
+
   // If we are connected to a peer BLE Server, update the characteristic each time we are reached
   // with the current time since boot.
-  if (connected) {
+  int statuspin = digitalRead(4);
+  if (statuspin == HIGH) {CONNECTED = true;} else {CONNECTED = false; DISCONNECT = true;}
+  if (CONNECTED) {
+    if (DISCONNECT) {AudioSelection1 = "VA20"; AUDIO1 = true; DISCONNECT = false;} // sends device connected notification and enables bluetooth comms sending from gun
     // Set the characteristic's value to be the array of bytes that is actually a string.
     //pRemoteCharacteristic->writeValue(newValue.c_str(), newValue.length());
     //pRemoteCharacteristic->writeValue((uint8_t*)newValue.c_str(), newValue.length(),true);
@@ -1948,9 +1907,9 @@ void loop() {
       settingsallowed1 = 0;
     }
     if (settingsallowed1 == 1) {
-      Serial.println("Weapon Slot 0 Requested");
+      Serial.println("Weapon Slot 0 Requested"); // this is now set, if settings allowed == 1, which it is if we press "1" and send it... 
       delay(250);
-      GETSLOT0 = true;
+      GETSLOT0 = true; // now we are setting weapon number one...
       settingsallowed1 = 0;
     }
     if (settingsallowed1 == 2) {
@@ -1998,15 +1957,11 @@ void loop() {
       Serial.println("game time expired");
       GameStartTime = 0;
     }
+  } else {
+    delay(2000);
+    Serial.println("Tagger Disconnected, Attempting to Pair");
+  }
 
-    //************************************************************************************
-  } /*else if (doScan) {
-    if (millis() - startScan > 5000) {
-      Serial.println("Scanning again");
-      BLEDevice::init("");
-      BLEDevice::getScan()->start(10, true); // this is just example to start scan after disconnect, most likely there is better way to do it in arduino
-      startScan = millis();
-    }
-  }*/
-  delay(500); // delay a second between loops.
+
+
 } // End of loop
