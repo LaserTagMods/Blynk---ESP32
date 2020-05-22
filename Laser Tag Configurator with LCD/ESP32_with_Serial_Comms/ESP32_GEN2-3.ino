@@ -32,6 +32,7 @@
  * updated 5/6/2020 re-instated three team selection and added four team auto selections
  * updated 5/7/2020 disabled player manual selections when triggered by blynk for a new option to be enabled or if game starts (cant give them players too much credit can we?)
  * updated 5/8/2020 fixed a bug with the count down game timer announcements
+ * updated 5/22/2020 integrated customized sound for player choice gun selections (be sure to update gun audio files)
  *
  * Written by Jay Burden
  *
@@ -441,50 +442,50 @@ static void notifyCallback(
             STATUSCHANGE=false;
           }
           if (GETSLOT0){ // used for configuring manual team selection
-            if (SLOTA==19) {SLOTA=1; STATUSCHANGE=true; AudioSelection1="VA01"; AUDIO1=true; Serial.println("Weapon changed from 19 to 1");}          
-            if (SLOTA==18) {SLOTA=19; AudioSelection1="VA0J"; AUDIO1=true; Serial.println("Weapon 0 changed from 18 to 19");} // 
-            if (SLOTA==17) {SLOTA=18; AudioSelection1="VA0I"; AUDIO1=true; Serial.println("Weapon 0 changed from 17 to 18");} // 
-            if (SLOTA==16) {SLOTA=17; AudioSelection1="VA0H"; AUDIO1=true; Serial.println("Weapon 0 changed from 16 to 17");} // 
-            if (SLOTA==15) {SLOTA=16; AudioSelection1="VA0G"; AUDIO1=true; Serial.println("Weapon 0 changed from 15 to 16");} //        
-            if (SLOTA==14) {SLOTA=15; AudioSelection1="VA0F"; AUDIO1=true; Serial.println("Weapon 0 changed from 14 to 15");} // 
-            if (SLOTA==13) {SLOTA=14; AudioSelection1="VA0E"; AUDIO1=true; Serial.println("Weapon 0 changed from 13 to 14");} // 
-            if (SLOTA==12) {SLOTA=13; AudioSelection1="VA0D"; AUDIO1=true; Serial.println("Weapon 0 changed from 12 to 13");} // 
-            if (SLOTA==11) {SLOTA=12; AudioSelection1="VA0C"; AUDIO1=true; Serial.println("Weapon 0 changed from 11 to 12");} //         
-            if (SLOTA==10) {SLOTA=11; AudioSelection1="VA0B"; AUDIO1=true; Serial.println("Weapon 0 changed from 10 to 11");} // 
-            if (SLOTA==9) {SLOTA=10; AudioSelection1="VA0A"; AUDIO1=true; Serial.println("Weapon 0 changed from 9 to 10");} // 
-            if (SLOTA==8) {SLOTA=9; AudioSelection1="VA09"; AUDIO1=true; Serial.println("Weapon 0 changed from 8 to 9");} // 
-            if (SLOTA==7) {SLOTA=8; AudioSelection1="VA08"; AUDIO1=true; Serial.println("Weapon 0 changed from 7 to 8");} // 
-            if (SLOTA==6) {SLOTA=7; AudioSelection1="VA07"; AUDIO1=true; Serial.println("Weapon 0 changed from 6 to 7");} // 
-            if (SLOTA==5) {SLOTA=6; AudioSelection1="VA06"; AUDIO1=true; Serial.println("Weapon 0 changed from 5 to 6");} // 
-            if (SLOTA==4) {SLOTA=5; AudioSelection1="VA05"; AUDIO1=true; Serial.println("Weapon 0 changed from 4 to 5");} //         
-            if (SLOTA==3) {SLOTA=4; AudioSelection1="VA04"; AUDIO1=true; Serial.println("Weapon 0 changed from 3 to 4");} // 
-            if (SLOTA==2) {SLOTA=3; AudioSelection1="VA03"; AUDIO1=true; Serial.println("Weapon 0 changed from 2 to 3");} // 
-            if (SLOTA==1 && STATUSCHANGE==false) {SLOTA=2; AudioSelection1="VA02"; AUDIO1=true; Serial.println("Weapon 0 changed from 1 to 2");} // 
-            if (SLOTA==100) {SLOTA=1; AudioSelection1="VA01"; AUDIO1=true; Serial.println("Weapon 0 changed from 0 to 1");} //        
+            if (SLOTA==19) {SLOTA=1; STATUSCHANGE=true; AudioSelection1="GN01"; AUDIO1=true; Serial.println("Weapon changed from 19 to 1");}          
+            if (SLOTA==18) {SLOTA=19; AudioSelection1="GN19"; AUDIO1=true; Serial.println("Weapon 0 changed from 18 to 19");} // 
+            if (SLOTA==17) {SLOTA=18; AudioSelection1="GN18"; AUDIO1=true; Serial.println("Weapon 0 changed from 17 to 18");} // 
+            if (SLOTA==16) {SLOTA=17; AudioSelection1="GN17"; AUDIO1=true; Serial.println("Weapon 0 changed from 16 to 17");} // 
+            if (SLOTA==15) {SLOTA=16; AudioSelection1="GN16"; AUDIO1=true; Serial.println("Weapon 0 changed from 15 to 16");} //        
+            if (SLOTA==14) {SLOTA=15; AudioSelection1="GN15"; AUDIO1=true; Serial.println("Weapon 0 changed from 14 to 15");} // 
+            if (SLOTA==13) {SLOTA=14; AudioSelection1="GN14"; AUDIO1=true; Serial.println("Weapon 0 changed from 13 to 14");} // 
+            if (SLOTA==12) {SLOTA=13; AudioSelection1="GN13"; AUDIO1=true; Serial.println("Weapon 0 changed from 12 to 13");} // 
+            if (SLOTA==11) {SLOTA=12; AudioSelection1="GN12"; AUDIO1=true; Serial.println("Weapon 0 changed from 11 to 12");} //         
+            if (SLOTA==10) {SLOTA=11; AudioSelection1="GN11"; AUDIO1=true; Serial.println("Weapon 0 changed from 10 to 11");} // 
+            if (SLOTA==9) {SLOTA=10; AudioSelection1="GN10"; AUDIO1=true; Serial.println("Weapon 0 changed from 9 to 10");} // 
+            if (SLOTA==8) {SLOTA=9; AudioSelection1="GN09"; AUDIO1=true; Serial.println("Weapon 0 changed from 8 to 9");} // 
+            if (SLOTA==7) {SLOTA=8; AudioSelection1="GN08"; AUDIO1=true; Serial.println("Weapon 0 changed from 7 to 8");} // 
+            if (SLOTA==6) {SLOTA=7; AudioSelection1="GN07"; AUDIO1=true; Serial.println("Weapon 0 changed from 6 to 7");} // 
+            if (SLOTA==5) {SLOTA=6; AudioSelection1="GN06"; AUDIO1=true; Serial.println("Weapon 0 changed from 5 to 6");} // 
+            if (SLOTA==4) {SLOTA=5; AudioSelection1="GN05"; AUDIO1=true; Serial.println("Weapon 0 changed from 4 to 5");} //         
+            if (SLOTA==3) {SLOTA=4; AudioSelection1="GN04"; AUDIO1=true; Serial.println("Weapon 0 changed from 3 to 4");} // 
+            if (SLOTA==2) {SLOTA=3; AudioSelection1="GN03"; AUDIO1=true; Serial.println("Weapon 0 changed from 2 to 3");} // 
+            if (SLOTA==1 && STATUSCHANGE==false) {SLOTA=2; AudioSelection1="GN02"; AUDIO1=true; Serial.println("Weapon 0 changed from 1 to 2");} // 
+            if (SLOTA==100) {SLOTA=1; AudioSelection1="GN01"; AUDIO1=true; Serial.println("Weapon 0 changed from 0 to 1");} //        
             STATUSCHANGE=false;
             TAGGERUPDATE=true;
           }
           if (GETSLOT1){ // used for configuring manual team selection
-            if (SLOTB==19) {SLOTB=1; STATUSCHANGE=true; AudioSelection1="VA01"; AUDIO1=true; Serial.println("Weapon changed from 19 to 1");}          
-            if (SLOTB==18) {SLOTB=19; AudioSelection1="VA0J"; AUDIO1=true; Serial.println("Weapon 1 changed from 18 to 19");} // 
-            if (SLOTB==17) {SLOTB=18; AudioSelection1="VA0I"; AUDIO1=true; Serial.println("Weapon 1 changed from 17 to 18");} // 
-            if (SLOTB==16) {SLOTB=17; AudioSelection1="VA0H"; AUDIO1=true; Serial.println("Weapon 1 changed from 16 to 17");} // 
-            if (SLOTB==15) {SLOTB=16; AudioSelection1="VA0G"; AUDIO1=true; Serial.println("Weapon 1 changed from 15 to 16");} //        
-            if (SLOTB==14) {SLOTB=15; AudioSelection1="VA0F"; AUDIO1=true; Serial.println("Weapon 1 changed from 14 to 15");} // 
-            if (SLOTB==13) {SLOTB=14; AudioSelection1="VA0E"; AUDIO1=true; Serial.println("Weapon 1 changed from 13 to 14");} // 
-            if (SLOTB==12) {SLOTB=13; AudioSelection1="VA0D"; AUDIO1=true; Serial.println("Weapon 1 changed from 12 to 13");} // 
-            if (SLOTB==11) {SLOTB=12; AudioSelection1="VA0C"; AUDIO1=true; Serial.println("Weapon 1 changed from 11 to 12");} //         
-            if (SLOTB==10) {SLOTB=11; AudioSelection1="VA0B"; AUDIO1=true; Serial.println("Weapon 1 changed from 10 to 11");} // 
-            if (SLOTB==9) {SLOTB=10; AudioSelection1="VA0A"; AUDIO1=true; Serial.println("Weapon 1 changed from 9 to 10");} // 
-            if (SLOTB==8) {SLOTB=9; AudioSelection1="VA09"; AUDIO1=true; Serial.println("Weapon 1 changed from 8 to 9");} // 
-            if (SLOTB==7) {SLOTB=8; AudioSelection1="VA08"; AUDIO1=true; Serial.println("Weapon 1 changed from 7 to 8");} // 
-            if (SLOTB==6) {SLOTB=7; AudioSelection1="VA07"; AUDIO1=true; Serial.println("Weapon 1 changed from 6 to 7");} // 
-            if (SLOTB==5) {SLOTB=6; AudioSelection1="VA06"; AUDIO1=true; Serial.println("Weapon 1 changed from 5 to 6");} // 
-            if (SLOTB==4) {SLOTB=5; AudioSelection1="VA05"; AUDIO1=true; Serial.println("Weapon 1 changed from 4 to 5");} //         
-            if (SLOTB==3) {SLOTB=4; AudioSelection1="VA04"; AUDIO1=true; Serial.println("Weapon 1 changed from 3 to 4");} // 
-            if (SLOTB==2) {SLOTB=3; AudioSelection1="VA03"; AUDIO1=true; Serial.println("Weapon 1 changed from 2 to 3");} // 
-            if (SLOTB==1 && STATUSCHANGE==false) {SLOTB=2; AudioSelection1="VA02"; AUDIO1=true; Serial.println("Weapon 1 changed from 1 to 2");} // 
-            if (SLOTB==100) {SLOTB=1; AudioSelection1="VA01"; AUDIO1=true; Serial.println("Weapon 1 changed from 0 to 1");} //        
+            if (SLOTB==19) {SLOTB=1; STATUSCHANGE=true; AudioSelection1="GN01"; AUDIO1=true; Serial.println("Weapon changed from 19 to 1");}          
+            if (SLOTB==18) {SLOTB=19; AudioSelection1="GN19"; AUDIO1=true; Serial.println("Weapon 1 changed from 18 to 19");} // 
+            if (SLOTB==17) {SLOTB=18; AudioSelection1="GN18"; AUDIO1=true; Serial.println("Weapon 1 changed from 17 to 18");} // 
+            if (SLOTB==16) {SLOTB=17; AudioSelection1="GN17"; AUDIO1=true; Serial.println("Weapon 1 changed from 16 to 17");} // 
+            if (SLOTB==15) {SLOTB=16; AudioSelection1="GN16"; AUDIO1=true; Serial.println("Weapon 1 changed from 15 to 16");} //        
+            if (SLOTB==14) {SLOTB=15; AudioSelection1="GN15"; AUDIO1=true; Serial.println("Weapon 1 changed from 14 to 15");} // 
+            if (SLOTB==13) {SLOTB=14; AudioSelection1="GN14"; AUDIO1=true; Serial.println("Weapon 1 changed from 13 to 14");} // 
+            if (SLOTB==12) {SLOTB=13; AudioSelection1="GN13"; AUDIO1=true; Serial.println("Weapon 1 changed from 12 to 13");} // 
+            if (SLOTB==11) {SLOTB=12; AudioSelection1="GN12"; AUDIO1=true; Serial.println("Weapon 1 changed from 11 to 12");} //         
+            if (SLOTB==10) {SLOTB=11; AudioSelection1="GN11"; AUDIO1=true; Serial.println("Weapon 1 changed from 10 to 11");} // 
+            if (SLOTB==9) {SLOTB=10; AudioSelection1="GN10"; AUDIO1=true; Serial.println("Weapon 1 changed from 9 to 10");} // 
+            if (SLOTB==8) {SLOTB=9; AudioSelection1="GN09"; AUDIO1=true; Serial.println("Weapon 1 changed from 8 to 9");} // 
+            if (SLOTB==7) {SLOTB=8; AudioSelection1="GN08"; AUDIO1=true; Serial.println("Weapon 1 changed from 7 to 8");} // 
+            if (SLOTB==6) {SLOTB=7; AudioSelection1="GN07"; AUDIO1=true; Serial.println("Weapon 1 changed from 6 to 7");} // 
+            if (SLOTB==5) {SLOTB=6; AudioSelection1="GN06"; AUDIO1=true; Serial.println("Weapon 1 changed from 5 to 6");} // 
+            if (SLOTB==4) {SLOTB=5; AudioSelection1="GN05"; AUDIO1=true; Serial.println("Weapon 1 changed from 4 to 5");} //         
+            if (SLOTB==3) {SLOTB=4; AudioSelection1="GN04"; AUDIO1=true; Serial.println("Weapon 1 changed from 3 to 4");} // 
+            if (SLOTB==2) {SLOTB=3; AudioSelection1="GN03"; AUDIO1=true; Serial.println("Weapon 1 changed from 2 to 3");} // 
+            if (SLOTB==1 && STATUSCHANGE==false) {SLOTB=2; AudioSelection1="GN02"; AUDIO1=true; Serial.println("Weapon 1 changed from 1 to 2");} // 
+            if (SLOTB==100) {SLOTB=1; AudioSelection1="GN01"; AUDIO1=true; Serial.println("Weapon 1 changed from 0 to 1");} //        
             STATUSCHANGE=false;
             TAGGERUPDATE=true;
           }
