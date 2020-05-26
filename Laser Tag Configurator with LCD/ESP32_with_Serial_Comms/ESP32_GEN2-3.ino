@@ -32,7 +32,9 @@
  * updated 5/6/2020 re-instated three team selection and added four team auto selections
  * updated 5/7/2020 disabled player manual selections when triggered by blynk for a new option to be enabled or if game starts (cant give them players too much credit can we?)
  * updated 5/8/2020 fixed a bug with the count down game timer announcements
- * updated 5/22/2020 integrated customized sound for player choice gun selections (be sure to update gun audio files)
+ * updated 5/22/2020 integrated custom weapon audio
+ * updated 5/25/2020 disabled auto lockout of buttons upon esp32 pairing, enabled blynk enabled lockout of buttons instead by V18 or 1801 serial command This way we can control esp32 bluetooth activation to be enabled instead of automatic
+ * updated 5/25/2020 added in deap sleep enabling if esp8266 sends a 1901 command
  *
  * Written by Jay Burden
  *
@@ -339,6 +341,7 @@ int health = 45;
 int armor = 70;
 int shield =70;
 
+bool ENABLEBLE = false; // used to enable or disable BLE device
 bool VOLUMEADJUST=false; // trigger for audio adjustment
 bool RESPAWN = false; // trigger to enable auto respawn when killed in game
 bool MANUALRESPAWN = false; // trigger to enable manual respawn from base stations when killed
@@ -402,7 +405,7 @@ static void notifyCallback(
     //*******************************************************
     // first signal we get from gun is this one and it tells the esp
     // that gun is happy with the connection
-    if (tokenStrings[0] == "$#CONNECT") {VOLUMEADJUST=true; AudioSelection1="VA20"; AUDIO1=true;}
+    if (tokenStrings[0] == "$#CONNECT") {VOLUMEADJUST=true; AudioSelection1="VA20"; AUDIO1=true;} // THIS IS TO ENABLE GUN CONTROL BY AND LOCK OUT PLAYER BUTTONS ONCE ESP32 IS PAIRED
     // this analyzes every single time a trigger is pulled
     // or a button is pressed or reload handle pulled. pretty cool
     // i dont do much with it yet here but will be used later to allow
@@ -1035,6 +1038,51 @@ void SyncScores() {
   SerialLCD.println(LCDText);
   Serial.println("Sent LCD data to ESP8266");
 }
+
+void BLESetup(){
+BLEDevice::init("");
+
+  // Retrieve a Scanner and set the callback we want to use to be informed when we
+  // have detected a new device.  Specify that we want active scanning and start the
+  // scan to run for 5 seconds.
+
+  /**
+ * notes from possible ways to increase output power
+ * 
+ * bledevice::setPower(Powerlevel);
+ * @brief Set the transmission power.
+ * The power level can be one of:
+ * * ESP_PWR_LVL_N14
+ * * ESP_PWR_LVL_N11
+ * * ESP_PWR_LVL_N8
+ * * ESP_PWR_LVL_N5
+ * * ESP_PWR_LVL_N2
+ * * ESP_PWR_LVL_P1
+ * * ESP_PWR_LVL_P4
+ * * ESP_PWR_LVL_P7
+ * @param [in] powerLevel.
+ * esp_err_t errRc=esp_ble_tx_power_set(ESP_BLE_PWR_TYPE_DEFAULT,ESP_PWR_LVL_P9);
+ * esp_ble_tx_power_set(ESP_BLE_PWR_TYPE_ADV, ESP_PWR_LVL_P9);
+ * esp_ble_tx_power_set(ESP_BLE_PWR_TYPE_SCAN ,ESP_PWR_LVL_P9); 
+ */
+
+  esp_err_t errRc=esp_ble_tx_power_set(ESP_BLE_PWR_TYPE_DEFAULT,ESP_PWR_LVL_P7); // updated version 4/14/2020
+  esp_ble_tx_power_set(ESP_BLE_PWR_TYPE_ADV, ESP_PWR_LVL_P7); // updated version 4/14/2020
+  esp_ble_tx_power_set(ESP_BLE_PWR_TYPE_SCAN ,ESP_PWR_LVL_P7); // updated version 4/14/2020
+  BLEDevice::setPower(ESP_PWR_LVL_P7);
+  //BLEDevice::setPower(ESP_PWR_LVL_N14); // old version
+  BLEScan* pBLEScan = BLEDevice::getScan();
+  pBLEScan->setAdvertisedDeviceCallbacks(new MyAdvertisedDeviceCallbacks());
+  pBLEScan->setInterval(1349);
+  pBLEScan->setWindow(449);
+  pBLEScan->setActiveScan(true);
+  pBLEScan->start(10, true);
+
+
+  pClient  = BLEDevice::createClient();
+  pClient->setClientCallbacks(new MyClientCallback());
+  }
+
 //******************************************************************************************
 //******************************************************************************************
 //******************************************************************************************
@@ -1198,6 +1246,8 @@ void serialTask(void * params){
       if (readtxt.toInt()==1600) {GAMEOVER=true; Serial.println("ending game");}
       // enable audio notification for changes
       if(1600 > readtxt.toInt() && readtxt.toInt() > 0) {AUDIO=true;}
+      if (readtxt.toInt() == 1801) {ENABLEBLE = true; Serial.println("Enabling BLE Pairing"); BLESetup();} // enables lockout of tagger by blynk
+      if (readtxt.toInt() == 1901) {esp_deep_sleep_start();}
     }
     delay(1000);
   }
@@ -1211,48 +1261,8 @@ void setup() {
   Serial.begin(115200);
   Serial.println("Starting Arduino BLE Client application...");
   SerialLCD.begin(9600,SERIAL_8N1, 16, 17); // setting up serial communication with ESP8266 on pins 16/17 w baud rate of 9600
-  delay(5000);
-  BLEDevice::init("");
-
-  // Retrieve a Scanner and set the callback we want to use to be informed when we
-  // have detected a new device.  Specify that we want active scanning and start the
-  // scan to run for 5 seconds.
-
-  /**
- * notes from possible ways to increase output power
- * 
- * bledevice::setPower(Powerlevel);
- * @brief Set the transmission power.
- * The power level can be one of:
- * * ESP_PWR_LVL_N14
- * * ESP_PWR_LVL_N11
- * * ESP_PWR_LVL_N8
- * * ESP_PWR_LVL_N5
- * * ESP_PWR_LVL_N2
- * * ESP_PWR_LVL_P1
- * * ESP_PWR_LVL_P4
- * * ESP_PWR_LVL_P7
- * @param [in] powerLevel.
- * esp_err_t errRc=esp_ble_tx_power_set(ESP_BLE_PWR_TYPE_DEFAULT,ESP_PWR_LVL_P9);
- * esp_ble_tx_power_set(ESP_BLE_PWR_TYPE_ADV, ESP_PWR_LVL_P9);
- * esp_ble_tx_power_set(ESP_BLE_PWR_TYPE_SCAN ,ESP_PWR_LVL_P9); 
- */
-
-  esp_err_t errRc=esp_ble_tx_power_set(ESP_BLE_PWR_TYPE_DEFAULT,ESP_PWR_LVL_P7); // updated version 4/14/2020
-  esp_ble_tx_power_set(ESP_BLE_PWR_TYPE_ADV, ESP_PWR_LVL_P7); // updated version 4/14/2020
-  esp_ble_tx_power_set(ESP_BLE_PWR_TYPE_SCAN ,ESP_PWR_LVL_P7); // updated version 4/14/2020
-  BLEDevice::setPower(ESP_PWR_LVL_P7);
-  //BLEDevice::setPower(ESP_PWR_LVL_N14); // old version
-  BLEScan* pBLEScan = BLEDevice::getScan();
-  pBLEScan->setAdvertisedDeviceCallbacks(new MyAdvertisedDeviceCallbacks());
-  pBLEScan->setInterval(1349);
-  pBLEScan->setWindow(449);
-  pBLEScan->setActiveScan(true);
-  pBLEScan->start(10, true);
-
-
-  pClient  = BLEDevice::createClient();
-  pClient->setClientCallbacks(new MyClientCallback());
+  // delay(5000); not needed anymore
+  
 
   xTaskCreatePinnedToCore( // pins the serial task loop to the second core
     serialTask,
@@ -1271,6 +1281,7 @@ void setup() {
 
 // This is the Arduino main loop function for the BLE Core.
 void loop() {
+  while (ENABLEBLE) {
   // the main loop for BLE activity is here, it is devided in three sections....
   // sections are for when connected, when not connected and to connect again
 
@@ -1360,7 +1371,7 @@ void loop() {
     
 //************************************************************************************
   } else if (doScan) {
-    if (millis() - startScan > 5000) {
+    if (millis() - startScan > 5000) { // scan for 5 seconds
       Serial.println("Scanning again");
       BLEDevice::init("");
       BLEDevice::getScan()->start(10, true); // this is just example to start scan after disconnect, most likely there is better way to do it in arduino
@@ -1368,4 +1379,5 @@ void loop() {
     }
   }
   delay(500); // delay a second between loops.
+  } // end of while ENABLEBLE is true, loop
 } // End of loop
