@@ -31,7 +31,8 @@
  *  4/22/2020 - Jay - added code to identify if esp32 is sending weapon selection data to display on lcd
  *  4/27/2020 - Jay - finished the processing of the sync score command, request data from esp32, recieve data, process scores, send via Bridge to control device (Primary Game Hub) limited to 52 scores for players because of limited Virtual Pins (alternatively a second Device could be used to breakd up the score reporting.
  *  5/5/2020 - Jay - added lockout function when game is engaged so that commands cannot be sent except for end game after pressing start game.
- *  
+ *  5/25/2020 - Jay - added blynk enabled button lockout instead of auto lockout from esp32 connection (see 1801)
+ *  5/26/2020 - Jay - modified scoring reporting to function with new score accumulator device code
  */ 
 
 /* 
@@ -242,11 +243,11 @@ WidgetBridge bridge1(V1);
 // You should get Auth Token in the Blynk App.
 // Go to the Project Settings (nut icon).
 //char auth[] = "wHfjglHvyD4qBv7PB8C9DKTY-NNp8VGr";
-char auth[] = "nAL11Xm5K05AYh7Nh6A0PccJRKO3wnZt";
+char auth[] = "S6xltBO40T-9nhFavpR2Zsn8WXLTCeJx";
 // Your WiFi credentials.
 // Set password to "" for open networks.
-char ssid[] = "Burtek Energy";
-char pass[] = "Sunpower2020";
+char ssid[] = "maxipad";
+char pass[] = "9165047812";
 // set the bridge token
 BLYNK_CONNECTED() {
   bridge1.setAuthToken("nngeMu8Nz6CAjzmPfFR89d31VBoSSRff"); // Token of the device 2
@@ -290,6 +291,7 @@ BlynkTimer SyncScoreRead; // created a timer object called "SyncScoreRead"
 #ifndef TX
 #define TX 15
 #endif
+int PowerPin = D7;  // Pin used to override the main power switch on tagger as a lockout function
 
 //SoftwareSerial SerialLCD(RX, TX, false, 256); //nodemcu D8-rx D7-tx
 SoftwareSerial SerialLCD;
@@ -420,12 +422,12 @@ if (SerialLCD.available()) {
     // create a string that looks like this: 
     // (Player ID, token 0), (Player Team, token 1), (Player Objective Score, token 2) (Team scores, tokens 3-8), (player kill counts, tokens 9-72 
     Serial.println("Score Data Recieved from ESP32");
+    Serial.println(readStr); // printing what was read from esp32
     SYNCSCORE=false;
       lcd.clear();
       lcd.setCursor(0,0);
       lcd.print("Syncing Scores");
-      lcd.setCursor(0,1);
-      lcd.print("Deaths: ");
+
       int Deaths=0;
       int Data[64];
       int count=0;
@@ -434,10 +436,11 @@ if (SerialLCD.available()) {
       Serial.println("Converting String character "+String(count)+" to integer");
       count++;
       }
-      Deaths = Data[3] + Data[4] + Data[5] + Data[6] + Data[7] + Data[8];
+      Deaths = Data[3] + Data[4] + Data[5] + Data[6] + Data[7] + Data[8]; // accumulating the kill counts recorded from each team to determine total deaths
       // add all kills
       // send kills to lcd
-      lcd.print(Deaths);
+      lcd.setCursor(0,1);
+      lcd.print("Deaths: ");
       Serial.println("Player Deaths: "+String(Deaths));
       lcd.setCursor(0,2);
       lcd.print("Player Objectives completed: "+String(Data[2]));
@@ -445,6 +448,11 @@ if (SerialLCD.available()) {
       // send scores to blynk accumulator device over bridge to be summed and then posted to blynk server/app
       // designating certain pins for score accumulation. 
       // Pins 0-63 are for player kill counts, this sends all player scores
+      bridge1.virtualWrite(V0, readStr); // sending the whole string from esp32
+      Serial.println("finished sending data to score reporting device");
+        
+        /*
+         * not used since we are sending a string instead and this is individual score reporting methods
         bridge1.virtualWrite(V0, Data[9]); // sending the value to controller
         bridge1.virtualWrite(V1, Data[10]); // sending the value to controller
         bridge1.virtualWrite(V2, Data[11]); // sending the value to controller
@@ -578,8 +586,8 @@ if (SerialLCD.available()) {
         if (Data[0]==49) {bridge1.virtualWrite(V125, Data[2]);}  // sending the value to controller
         if (Data[0]==50) {bridge1.virtualWrite(V126, Data[2]);}  // sending the value to controller
         if (Data[0]==51) {bridge1.virtualWrite(V127, Data[2]);}  // sending the value to controller
-        /*         
-        Limitations without additional programing to expand Virtual pins on Blynk 
+                
+        // Limitations without additional programing to expand Virtual pins on Blynk 
         if (Data[0]==52) {bridge1.virtualWrite(V128, Data[2]);}  // sending the value to controller
         if (Data[0]==53) {bridge1.virtualWrite(V129, Data[2]);}  // sending the value to controller
         if (Data[0]==54) {bridge1.virtualWrite(V130, Data[2]);}  // sending the value to controller
@@ -910,6 +918,26 @@ if (b==0) {ToESP32=1600; SendESP32Data(); Serial.println("End Game is set to unp
 if (b==1) {ToESP32=1601; SendESP32Data(); Serial.println("Start Game is set to pressed"); LOCKOUT=true; Serial.println("Lockout Engaged");}
 // if (b==1) {ToESP32=1601; SendESP32Data(); Serial.println("Start Game is set to pressed"); GAMESTART=true; gamestart=millis();}
 }
+
+// Locks out Tagger power on/off esp8266 only
+BLYNK_WRITE(V17) {
+int b=param.asInt();
+if (b==1) {Serial.println("Manual Power Switch Override Engaged"); digitalWrite(PowerPin, HIGH);}
+if (b==0) {Serial.println("Manual Power Switch Override Dis-Engaged"); digitalWrite(PowerPin, LOW);}
+}
+
+
+// player button lockout
+BLYNK_WRITE(V18) {
+int b=param.asInt();
+if (b==1) {ToESP32=1801; SendESP32Data(); Serial.println("Player Button Lockout Engaged");}
+}
+
+// player button lockout
+BLYNK_WRITE(V19) {
+int b=param.asInt();
+if (b==1) {ToESP32=1901; SendESP32Data(); Serial.println("Player Button Lockout Engaged");}
+}
 //*****************************************************************************************
 //*****************************************************************************************
 
@@ -926,6 +954,8 @@ void setup()
   lcd.backlight();
   lcd.print("Welcome to Battle Company!");
   // Start Blynk
+
+  pinMode(PowerPin, OUTPUT); // pin used for power switch override
   
 //**********************************************************************************
 //****************************  UPDATE THIS SECTION!!!!! ***************************
