@@ -1,0 +1,15 @@
+Audio Hacks:
+
+I. Remove the Audio Start up music and battle company call outs:
+1. connect tagger to computer
+2. locate the following files:
+    VA9U and JA9
+3. rename the files as XX9U AND XX9 this way you can locate them in the future if you desire
+
+II. Adding custom call outs for weapons for configurator:
+1. connect tagger to computer
+2. copy over the GN1 through GN19 audio files
+
+III. Removing the offline respawn chimes:
+
+IV. Removing the outdoor death beep/tone:
