@@ -40,7 +40,7 @@
  *
  * keep device in range of laser tag BLE enabled compatible device for it to work
  * This code requires an esp8266 to be paired via serial (reference esp8266 code)
- *      use pins 16 & 17 to connect to D8 & D7, respectively, of ESP8266
+ *      use pins 16 & 17 to connect to D8 & D7, respectively, of ESP8266, or D6 and D5 in my build
  * optionally power from laser tag battery to the GRND and the VCC pins or power
  *      via usb or standalone battery
  * optionally install a transistor across reset pins on laser tag device to pin 4
@@ -252,7 +252,7 @@ HardwareSerial SerialLCD( 1 );
 //******************* IMPORTANT *********************
 //******************* IMPORTANT *********************
 //*********** YOU NEED TO CHANGE INFO IN HERE FOR EACH GUN!!!!!!***********
-#define BLE_SERVER_SERVICE_NAME "jayeburden" // CHANGE ME!!!!
+#define BLE_SERVER_SERVICE_NAME "NWPLAYER8" // CHANGE ME!!!! (case sensitive)
 // this is important it is how we filter
 // out unwanted guns or other devices that use UART BLE characteristics you need to change 
 // this to the name of the gun ble server
@@ -264,7 +264,7 @@ static BLEUUID serviceUUID("6E400001-B5A3-F393-E0A9-E50E24DCCA9E"); // CHANGE ME
 // these uuids are used to send and recieve data
 static BLEUUID    charRXUUID("6E400002-B5A3-F393-E0A9-E50E24DCCA9E"); // CHANGE ME!!!!
 static BLEUUID    charTXUUID("6E400003-B5A3-F393-E0A9-E50E24DCCA9E"); // CHANGE ME !!!!
-int GunID = 0; // this is the gun or player ID, each esp32 needs a different one, set "0-63"
+int GunID = 6; // this is the gun or player ID, each esp32 needs a different one, set "0-63"
 //******************* IMPORTANT *********************
 //******************* IMPORTANT *********************
 //******************* IMPORTANT *********************
