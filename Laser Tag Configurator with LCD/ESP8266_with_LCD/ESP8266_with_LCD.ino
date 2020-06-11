@@ -11,7 +11,7 @@
  *  Connect 5v or 3.3v to the VCC of the LCD
  *  Connect Grnd pin to the Grnd pin of the LCD
  *  (this sketch calls for a 4 x 20 LCD sketch with an I2C at address 0x27)
- *  Connect Pin D7 to Pin 17 of the ESP32 and D8 to Pin 16 of the ESP32
+ *  Connect Pin D7 to Pin 17 of the ESP32 and D8 to Pin 16 of the ESP32, or in my build 16 to D6 and 17 to D5
  *  If the ESP8266 is powered by the ESP32, then the Vcc and GRND pins should
  *  be connected as well
  *  
@@ -246,8 +246,8 @@ WidgetBridge bridge1(V1);
 char auth[] = "S6xltBO40T-9nhFavpR2Zsn8WXLTCeJx";
 // Your WiFi credentials.
 // Set password to "" for open networks.
-char ssid[] = "maxipad";
-char pass[] = "9165047812";
+char ssid[] = "Burtek Energy";
+char pass[] = "Sunpower2020";
 // set the bridge token
 BLYNK_CONNECTED() {
   bridge1.setAuthToken("nngeMu8Nz6CAjzmPfFR89d31VBoSSRff"); // Token of the device 2
@@ -286,10 +286,12 @@ BlynkTimer SyncScoreRead; // created a timer object called "SyncScoreRead"
 
 
 #ifndef RX
-#define RX 13
+//#define RX 14 // D7=13 to pin 17 on esp32, try D5 or 14
+#define RX 13 // D7=13 to pin 17 on esp32, try D5 or 14
 #endif
 #ifndef TX
-#define TX 15
+//#define TX 12 // D8=15 to pin 16 on esp32, try D6 or 12
+#define TX 15 // D8=15 to pin 16 on esp32, try D6 or 12
 #endif
 int PowerPin = D7;  // Pin used to override the main power switch on tagger as a lockout function
 
@@ -960,13 +962,13 @@ void setup()
 //**********************************************************************************
 //****************************  UPDATE THIS SECTION!!!!! ***************************
 //**********************************************************************************
-  // Blynk.begin(auth, ssid, pass, IPAddress(192,168,1,80), 8080);
-  Blynk.begin(auth, ssid, pass);
+  Blynk.begin(auth, ssid, pass, IPAddress(192,168,1,169), 8080); // 192.168.137.1
+  //Blynk.begin(auth, ssid, pass);
 //**********************************************************************************
 //****************************  UPDATE THIS SECTION!!!!! ***************************
 //**********************************************************************************
 
-  // timer settings (currently not used)
+  // timer settings (currently not used) 
   ESP32Read.setInterval(1L, ReadESP32Data); // Reading data from esp32 constantly
   SyncScoreRead.setInterval(1L, ReadSyncScoreData); // Reading data from esp32 constantly
   // ESP32Send.setInterval(5000L, SendESP32Data); // sending commands to esp32 every five seconds
