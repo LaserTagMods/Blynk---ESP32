@@ -35,6 +35,10 @@
  * updated 5/22/2020 integrated custom weapon audio
  * updated 5/25/2020 disabled auto lockout of buttons upon esp32 pairing, enabled blynk enabled lockout of buttons instead by V18 or 1801 serial command This way we can control esp32 bluetooth activation to be enabled instead of automatic
  * updated 5/25/2020 added in deap sleep enabling if esp8266 sends a 1901 command
+ * updated 8/11/2020 changed reporting score processes and timing to instant upon esp8266 request
+ * updated 8/14/2020 fixed error for sending player scores, was missing player [0] and had a player[64] same for team[0] and team[6]
+ * updated 8/16/2020 added an IR Debug mode that when a tag is recieved, it enables the data to be sent to the esp8266 and forwarded on to the app
+ * updated 8/18/2020 added OTA updating capability to device, can be a bit finicky so be patient i guess.
  *
  * Written by Jay Burden
  *
@@ -54,209 +58,25 @@
  *to a server.
  */
 
- /* 
- *  Section intended for logging of action variable and intended results when
- *  recieved from ESP8266. 
- *  
- *  Each time a value is sent to this ESP32 an action needs to perform once only
- *  to configure settings as listed below
- *  
-Format below: (ToESP32 value)(Setting)(Selection) (Virtual Pin) (Pin Value)
-0   Do nothing    None    N/A   N/A
-1   Weapon Slot 0 =   Player's Choice   V0    1
-2   Weapon Slot 0 =   Unarmed   V0    2
-3   Weapon Slot 0 =   AMR   V0    3
-4   Weapon Slot 0 =   Assault Rifle   V0    4
-5   Weapon Slot 0 =   Bolt Rifle    V0    5
-6   Weapon Slot 0 =   BurstRifle    V0    6
-7   Weapon Slot 0 =   ChargeRifle   V0    7
-8   Weapon Slot 0 =   Energy Launcher   V0    8
-9   Weapon Slot 0 =   Energy Rifle    V0    9
-10    Weapon Slot 0 =   Force Rifle   V0    10
-11    Weapon Slot 0 =   Ion Sniper    V0    11
-12    Weapon Slot 0 =   Laser Cannon    V0    12
-13    Weapon Slot 0 =   Plasma Sniper   V0    13
-14    Weapon Slot 0 =   Rail Gun    V0    14
-15    Weapon Slot 0 =   Rocket Launcher   V0    15
-16    Weapon Slot 0 =   Shotgun   V0    16
-17    Weapon Slot 0 =   SMG   V0    17
-18    Weapon Slot 0 =   Sniper Rifle    V0    18
-19    Weapon Slot 0 =   Stinger   V0    19
-20    Weapon Slot 0 =   Suppressor    V0    20
-101   Weapon Slot 0 =   Player's Choice   V1    1
-102   Weapon Slot 0 =   Unarmed   V1    2
-103   Weapon Slot 0 =   AMR   V1    3
-104   Weapon Slot 0 =   Assault Rifle   V1    4
-105   Weapon Slot 0 =   Bolt Rifle    V1    5
-106   Weapon Slot 0 =   BurstRifle    V1    6
-107   Weapon Slot 0 =   ChargeRifle   V1    7
-108   Weapon Slot 0 =   Energy Launcher   V1    8
-109   Weapon Slot 0 =   Energy Rifle    V1    9
-110   Weapon Slot 0 =   Force Rifle   V1    10
-111   Weapon Slot 0 =   Ion Sniper    V1    11
-112   Weapon Slot 0 =   Laser Cannon    V1    12
-113   Weapon Slot 0 =   Plasma Sniper   V1    13
-114   Weapon Slot 0 =   Rail Gun    V1    14
-115   Weapon Slot 0 =   Rocket Launcher   V1    15
-116   Weapon Slot 0 =   Shotgun   V1    16
-117   Weapon Slot 0 =   SMG   V1    17
-118   Weapon Slot 0 =   Sniper Rifle    V1    18
-119   Weapon Slot 0 =   Stinger   V1    19
-120   Weapon Slot 0 =   Suppressor    V1    20
-225   Objective/Goals =   25    V2    25
-224   Objective/Goals =   24    V2    24
-223   Objective/Goals =   23    V2    23
-222   Objective/Goals =   22    V2    22
-221   Objective/Goals =   21    V2    21
-220   Objective/Goals =   20    V2    20
-219   Objective/Goals =   19    V2    19
-218   Objective/Goals =   18    V2    18
-217   Objective/Goals =   17    V2    17
-216   Objective/Goals =   16    V2    16
-215   Objective/Goals =   15    V2    15
-214   Objective/Goals =   14    V2    14
-213   Objective/Goals =   13    V2    13
-212   Objective/Goals =   12    V2    12
-211   Objective/Goals =   11    V2    11
-210   Objective/Goals =   10    V2    10
-209   Objective/Goals =   9   V2    9
-208   Objective/Goals =   8   V2    8
-207   Objective/Goals =   7   V2    7
-206   Objective/Goals =   6   V2    6
-205   Objective/Goals =   5   V2    5
-204   Objective/Goals =   4   V2    4
-203   Objective/Goals =   3   V2    3
-202   Objective/Goals =   2   V2    2
-201   Objective/Goals =   1   V2    1
-200   Objective/Goals =   Unlimited   V2    0
-325   Kills to Win    25    V3    25
-324   Kills to Win    24    V3    24
-323   Kills to Win    23    V3    23
-322   Kills to Win    22    V3    22
-321   Kills to Win    21    V3    21
-320   Kills to Win    20    V3    20
-319   Kills to Win    19    V3    19
-318   Kills to Win    18    V3    18
-317   Kills to Win    17    V3    17
-316   Kills to Win    16    V3    16
-315   Kills to Win    15    V3    15
-314   Kills to Win    14    V3    14
-313   Kills to Win    13    V3    13
-312   Kills to Win    12    V3    12
-311   Kills to Win    11    V3    11
-310   Kills to Win    10    V3    10
-309   Kills to Win    9   V3    9
-308   Kills to Win    8   V3    8
-307   Kills to Win    7   V3    7
-306   Kills to Win    6   V3    6
-305   Kills to Win    5   V3    5
-304   Kills to Win    4   V3    4
-303   Kills to Win    3   V3    3
-302   Kills to Win    2   V3    2
-301   Kills to Win    1   V3    1
-300   Kills to Win    Unlimited   V3    0
-425   Lives   25    V4    25
-424   Lives   24    V4    24
-423   Lives   23    V4    23
-422   Lives   22    V4    22
-421   Lives   21    V4    21
-420   Lives   20    V4    20
-419   Lives   19    V4    19
-418   Lives   18    V4    18
-417   Lives   17    V4    17
-416   Lives   16    V4    16
-415   Lives   15    V4    15
-414   Lives   14    V4    14
-413   Lives   13    V4    13
-412   Lives   12    V4    12
-411   Lives   11    V4    11
-410   Lives   10    V4    10
-409   Lives   9   V4    9
-408   Lives   8   V4    8
-407   Lives   7   V4    7
-406   Lives   6   V4    6
-405   Lives   5   V4    5
-404   Lives   4   V4    4
-403   Lives   3   V4    3
-402   Lives   2   V4    2
-401   Lives   1   V4    1
-400   Lives   Unlimited   V4    0
-501   Game Time   1 Minute    V5    1
-502   Game Time   5 Minutes   V5    2
-503   Game Time   10 Minutes    V5    3
-504   Game Time   15 Minutes    V5    4
-505   Game Time   20 Minutes    V5    5
-506   Game Time   25 Minutes    V5    6
-507   Game Time   30 Minutes    V5    7
-508   Game Time   Unlimited   V5    8
-601   Lighting/Ambience   Outdoor Mode    V6    1
-602   Lighting/Ambience   Indoor Mode   V6    2
-603   Lighting/Ambience   Stealth   V6    3
-701   Teams   Free For All    V7    1
-702   Teams   Two Teams (odds/evens)    V7    2
-703   Teams   Three Teams (every three)   V7    3
-704   Teams   Four Teams (every four)   V7    4
-705   Teams   Player's Choice   V7    5
-801   Game Mode   Death Match   V8    1
-802   Game Mode   Capture the Flag    V8    2
-803   Game Mode   Assault   V8    3
-804   Game Mode   King of the Hill    V8    4
-805   Game Mode   Survival    V8    5
-806   Game Mode   Troule in Terrorist Town    V8    6
-807   Game Mode   You only Live Twice   V8    7
-808   Game Mode   One Shot Kills (pistols)    V8    8
-809   Game Mode   Gun Game    V8    9
-810   Game Mode   Domination    V8    10
-901   Respawn   Immediate (auto)    V9    1
-902   Respawn   15 seconds (auto)   V9    2
-903   Respawn   30 seconds (auto)   V9    3
-904   Respawn   45 seconds  (auto)    V9    4
- 905   Respawn   60 seconds (auto)   V9    5
- 906   Respawn   90 seconds (auto)   V9    6
- 907   Respawn   Ramp 45 (auto)    V9    7
- 908   Respawn   Ramp 90 (auto)    V9    8
- 909   Respawn   Respawn Station (manual)    V9    9
-1001    Delayed Start   Immediate   V10   1
-1002    Delayed Start   15 seconds    V10   2
-1003    Delayed Start   30 seconds    V10   3
-1004    Delayed Start   45 seconds    V10   4
-1005    Delayed Start   60 seconds    V10   5
-1006    Delayed Start   90 seconds    V10   6
-1007    Delayed Start   5 Minutes   V10   7
-1008    Delayed Start   10 Minutes    V10   8
-1009    Delayed Start   15 Minutes    V10   9
-1101    Special Abilities   item 1    V11   1
-1102    Special Abilities   item 2    V11   2
-1200    Player Gender   Male    V12   0
-1201    Player Gender   Female    V12   1
-1300    Ammo Settings   Unlimited   V13   0
-1301    Ammo Settings   Limited   V13   1
-1400    Friendly Fire   Off   V14   0
-1401    Friendly Fire   On    V14   1
-1500    Reserved    item    V15   0
-1501    Reserved    item    V15   1
-1600    Start Game    unpressed   V16   0
-1601    Start Game    pressed   V16   1  
- */
- 
-
-
 //****************************************************************
 // libraries to include:
 #include "BLEDevice.h"
 #include <HardwareSerial.h>
 HardwareSerial SerialLCD( 1 );
+#include <WiFi.h>
+#include <ESPmDNS.h>
+#include <WiFiUdp.h>
+#include <ArduinoOTA.h>
 //****************************************************************
 
 //******************* IMPORTANT *********************
 //******************* IMPORTANT *********************
 //******************* IMPORTANT *********************
 //*********** YOU NEED TO CHANGE INFO IN HERE FOR EACH GUN!!!!!!***********
-#define BLE_SERVER_SERVICE_NAME "NWPLAYER8" // CHANGE ME!!!! (case sensitive)
+#define BLE_SERVER_SERVICE_NAME "nwplayer10" // CHANGE ME!!!! (case sensitive)
 // this is important it is how we filter
 // out unwanted guns or other devices that use UART BLE characteristics you need to change 
 // this to the name of the gun ble server
-
 // The remote service we wish to connect to, all guns should be the same as
 // this is an uart comms set up
 static BLEUUID serviceUUID("6E400001-B5A3-F393-E0A9-E50E24DCCA9E"); // CHANGE ME!!!!!!!
@@ -264,7 +84,10 @@ static BLEUUID serviceUUID("6E400001-B5A3-F393-E0A9-E50E24DCCA9E"); // CHANGE ME
 // these uuids are used to send and recieve data
 static BLEUUID    charRXUUID("6E400002-B5A3-F393-E0A9-E50E24DCCA9E"); // CHANGE ME!!!!
 static BLEUUID    charTXUUID("6E400003-B5A3-F393-E0A9-E50E24DCCA9E"); // CHANGE ME !!!!
-int GunID = 6; // this is the gun or player ID, each esp32 needs a different one, set "0-63"
+int GunID = 0; // this is the gun or player ID, each esp32 needs a different one, set "0-63"
+// This is the WIFI info for OTA Update Mode
+const char* ssid = "maxipad";
+const char* password = "9165047812";
 //******************* IMPORTANT *********************
 //******************* IMPORTANT *********************
 //******************* IMPORTANT *********************
@@ -361,8 +184,19 @@ bool INGAME=false; // status check for game timer and other later for running ce
 bool COUNTDOWN1=false; // used for triggering a specic countdown
 bool COUNTDOWN2=false; // used for triggering a specific countdown
 bool COUNTDOWN3=false; // used for triggering a specific countdown
+bool FAKESCORE = false; // used for score testing do not use except for testing
+bool IRDEBUG = false; // used to enabling IR tag data send to esp8266
+bool IRTOTRANSMIT = false; // used to enable transmitting of IR data to ESP8266
+bool ENABLEOTAUPDATE = false; // enables the loop for updating OTA
+bool INITIALIZEOTA = false; // enables the object to disable BLE and enable WiFi
 
 long startScan = 0; // part of BLE enabling
+
+//variabls for blinking an LED with Millis
+const int led = 2; // ESP32 Pin to which onboard LED is connected
+unsigned long previousMillis = 0;  // will store last time LED was updated
+const long interval = 1000;  // interval at which to blink (milliseconds)
+int ledState = LOW;  // ledState used to set the LED
 
 bool WEAP = false; // not used anymore but was used to auto load gun settings on esp boot
 
@@ -541,6 +375,7 @@ static void notifyCallback(
         space 6 is "is critical" if critical a damage multiplier would apply, rare.
         space 7 is "power", not sure what that does.*/
       //been tagged
+      if (IRDEBUG) {IRTOTRANSMIT = true;}
       if (PENDINGRESPAWNIR) { // checks if we are awaiting a respawn signal
         // we need to analyze the tag received to see if it is a respawn worthy tag
         if (tokenStrings[2] == "7" && tokenStrings[4].toInt() == SetTeam && tokenStrings[5] == "0") { // need to analyze tag, if it matches we need to respawn player
@@ -732,6 +567,65 @@ class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
 }; // MyAdvertisedDeviceCallbacks
 
 //******************************************************************************************
+void InitializeOTAUpdater() {
+BLEDevice::deinit("");
+Serial.println("deinitialized BLE Device");
+WiFi.mode(WIFI_STA);
+  WiFi.begin(ssid, password);
+  while (WiFi.waitForConnectResult() != WL_CONNECTED) {
+    Serial.println("Connection Failed! Rebooting...");
+    delay(5000);
+    ESP.restart();
+  }
+
+  // Port defaults to 3232
+  // ArduinoOTA.setPort(3232);
+
+  // Hostname defaults to esp3232-[MAC]
+  // ArduinoOTA.setHostname("myesp32");
+
+  // No authentication by default
+  // ArduinoOTA.setPassword("admin");
+
+  // Password can be set with it's md5 value as well
+  // MD5(admin) = 21232f297a57a5a743894a0e4a801fc3
+  // ArduinoOTA.setPasswordHash("21232f297a57a5a743894a0e4a801fc3");
+
+  ArduinoOTA
+    .onStart([]() {
+      String type;
+      if (ArduinoOTA.getCommand() == U_FLASH)
+        type = "sketch";
+      else // U_SPIFFS
+        type = "filesystem";
+
+      // NOTE: if updating SPIFFS this would be the place to unmount SPIFFS using SPIFFS.end()
+      Serial.println("Start updating " + type);
+    })
+    .onEnd([]() {
+      Serial.println("\nEnd");
+    })
+    .onProgress([](unsigned int progress, unsigned int total) {
+      Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
+    })
+    .onError([](ota_error_t error) {
+      Serial.printf("Error[%u]: ", error);
+      if (error == OTA_AUTH_ERROR) Serial.println("Auth Failed");
+      else if (error == OTA_BEGIN_ERROR) Serial.println("Begin Failed");
+      else if (error == OTA_CONNECT_ERROR) Serial.println("Connect Failed");
+      else if (error == OTA_RECEIVE_ERROR) Serial.println("Receive Failed");
+      else if (error == OTA_END_ERROR) Serial.println("End Failed");
+    });
+
+  ArduinoOTA.begin();
+
+  Serial.println("Ready");
+  Serial.print("IP address: ");
+  Serial.println(WiFi.localIP());
+  ENABLEOTAUPDATE = true;
+  INITIALIZEOTA = false;
+}
+
 // sets and sends game settings based upon the stored settings
 void SetFFOutdoor() {
   // token one of the following command is free for all, 0 is off and 1 is on
@@ -1024,21 +918,23 @@ void Audio() {
     }
 //******************************************************************************************
 void SyncScores() {
-  int senddelay=GunID*1000;
-  String LCDText;
-  delay(senddelay);
-  if (SetTeam==100) {
-    // create a string that looks like this: 
-    // (Player ID, token 0), (Player Team, token 1), (Player Objective Score, token 2) (Team scores, tokens 3-8), (player kill counts, tokens 9-72 
-    String LCDText = String(GunID)+","+String(Team)+","+String(CompletedObjectives)+","+String(TeamKillCount[1])+","+String(TeamKillCount[2])+","+String(TeamKillCount[3])+","+String(TeamKillCount[4])+","+String(TeamKillCount[5])+","+String(TeamKillCount[6])+","+String(PlayerKillCount[1])+","+String(PlayerKillCount[2])+","+String(PlayerKillCount[3])+","+String(PlayerKillCount[4])+","+String(PlayerKillCount[5])+","+String(PlayerKillCount[6])+","+String(PlayerKillCount[7])+","+String(PlayerKillCount[8])+","+String(PlayerKillCount[9])+","+String(PlayerKillCount[10])+","+String(PlayerKillCount[11])+","+String(PlayerKillCount[12])+","+String(PlayerKillCount[13])+","+String(PlayerKillCount[14])+","+String(PlayerKillCount[15])+","+String(PlayerKillCount[16])+","+String(PlayerKillCount[17])+","+String(PlayerKillCount[18])+","+String(PlayerKillCount[19])+","+String(PlayerKillCount[20])+","+String(PlayerKillCount[21])+","+String(PlayerKillCount[22])+","+String(PlayerKillCount[23])+","+String(PlayerKillCount[24])+","+String(PlayerKillCount[25])+","+String(PlayerKillCount[26])+","+String(PlayerKillCount[27])+","+String(PlayerKillCount[28])+","+String(PlayerKillCount[29])+","+String(PlayerKillCount[30])+","+String(PlayerKillCount[31])+","+String(PlayerKillCount[32])+","+String(PlayerKillCount[33])+","+String(PlayerKillCount[34])+","+String(PlayerKillCount[35])+","+String(PlayerKillCount[36])+","+String(PlayerKillCount[37])+","+String(PlayerKillCount[38])+","+String(PlayerKillCount[39])+","+String(PlayerKillCount[40])+","+String(PlayerKillCount[41])+","+String(PlayerKillCount[42])+","+String(PlayerKillCount[43])+","+String(PlayerKillCount[44])+","+String(PlayerKillCount[45])+","+String(PlayerKillCount[46])+","+String(PlayerKillCount[47])+","+String(PlayerKillCount[48])+","+String(PlayerKillCount[49])+","+String(PlayerKillCount[50])+","+String(PlayerKillCount[51])+","+String(PlayerKillCount[52])+","+String(PlayerKillCount[53])+","+String(PlayerKillCount[54])+","+String(PlayerKillCount[55])+","+String(PlayerKillCount[56])+","+String(PlayerKillCount[57])+","+String(PlayerKillCount[58])+","+String(PlayerKillCount[59])+","+String(PlayerKillCount[60])+","+String(PlayerKillCount[61])+","+String(PlayerKillCount[62])+","+String(PlayerKillCount[63])+","+String(PlayerKillCount[64]);
-    } else {
-      String LCDText = String(GunID)+","+String(SetTeam)+","+String(CompletedObjectives)+","+String(TeamKillCount[1])+","+String(TeamKillCount[2])+","+String(TeamKillCount[3])+","+String(TeamKillCount[4])+","+String(TeamKillCount[5])+","+String(TeamKillCount[6])+","+String(PlayerKillCount[1])+","+String(PlayerKillCount[2])+","+String(PlayerKillCount[3])+","+String(PlayerKillCount[4])+","+String(PlayerKillCount[5])+","+String(PlayerKillCount[6])+","+String(PlayerKillCount[7])+","+String(PlayerKillCount[8])+","+String(PlayerKillCount[9])+","+String(PlayerKillCount[10])+","+String(PlayerKillCount[11])+","+String(PlayerKillCount[12])+","+String(PlayerKillCount[13])+","+String(PlayerKillCount[14])+","+String(PlayerKillCount[15])+","+String(PlayerKillCount[16])+","+String(PlayerKillCount[17])+","+String(PlayerKillCount[18])+","+String(PlayerKillCount[19])+","+String(PlayerKillCount[20])+","+String(PlayerKillCount[21])+","+String(PlayerKillCount[22])+","+String(PlayerKillCount[23])+","+String(PlayerKillCount[24])+","+String(PlayerKillCount[25])+","+String(PlayerKillCount[26])+","+String(PlayerKillCount[27])+","+String(PlayerKillCount[28])+","+String(PlayerKillCount[29])+","+String(PlayerKillCount[30])+","+String(PlayerKillCount[31])+","+String(PlayerKillCount[32])+","+String(PlayerKillCount[33])+","+String(PlayerKillCount[34])+","+String(PlayerKillCount[35])+","+String(PlayerKillCount[36])+","+String(PlayerKillCount[37])+","+String(PlayerKillCount[38])+","+String(PlayerKillCount[39])+","+String(PlayerKillCount[40])+","+String(PlayerKillCount[41])+","+String(PlayerKillCount[42])+","+String(PlayerKillCount[43])+","+String(PlayerKillCount[44])+","+String(PlayerKillCount[45])+","+String(PlayerKillCount[46])+","+String(PlayerKillCount[47])+","+String(PlayerKillCount[48])+","+String(PlayerKillCount[49])+","+String(PlayerKillCount[50])+","+String(PlayerKillCount[51])+","+String(PlayerKillCount[52])+","+String(PlayerKillCount[53])+","+String(PlayerKillCount[54])+","+String(PlayerKillCount[55])+","+String(PlayerKillCount[56])+","+String(PlayerKillCount[57])+","+String(PlayerKillCount[58])+","+String(PlayerKillCount[59])+","+String(PlayerKillCount[60])+","+String(PlayerKillCount[61])+","+String(PlayerKillCount[62])+","+String(PlayerKillCount[63])+","+String(PlayerKillCount[64]);
-      }
+  // create a string that looks like this: 
+  // (Player ID, token 0), (Player Team, token 1), (Player Objective Score, token 2) (Team scores, tokens 3-8), (player kill counts, tokens 9-72 
+  String LCDText = String(GunID)+","+String(SetTeam)+","+String(CompletedObjectives)+","+String(TeamKillCount[0])+","+String(TeamKillCount[1])+","+String(TeamKillCount[2])+","+String(TeamKillCount[3])+","+String(TeamKillCount[4])+","+String(TeamKillCount[5])+","+String(PlayerKillCount[0])+","+String(PlayerKillCount[1])+","+String(PlayerKillCount[2])+","+String(PlayerKillCount[3])+","+String(PlayerKillCount[4])+","+String(PlayerKillCount[5])+","+String(PlayerKillCount[6])+","+String(PlayerKillCount[7])+","+String(PlayerKillCount[8])+","+String(PlayerKillCount[9])+","+String(PlayerKillCount[10])+","+String(PlayerKillCount[11])+","+String(PlayerKillCount[12])+","+String(PlayerKillCount[13])+","+String(PlayerKillCount[14])+","+String(PlayerKillCount[15])+","+String(PlayerKillCount[16])+","+String(PlayerKillCount[17])+","+String(PlayerKillCount[18])+","+String(PlayerKillCount[19])+","+String(PlayerKillCount[20])+","+String(PlayerKillCount[21])+","+String(PlayerKillCount[22])+","+String(PlayerKillCount[23])+","+String(PlayerKillCount[24])+","+String(PlayerKillCount[25])+","+String(PlayerKillCount[26])+","+String(PlayerKillCount[27])+","+String(PlayerKillCount[28])+","+String(PlayerKillCount[29])+","+String(PlayerKillCount[30])+","+String(PlayerKillCount[31])+","+String(PlayerKillCount[32])+","+String(PlayerKillCount[33])+","+String(PlayerKillCount[34])+","+String(PlayerKillCount[35])+","+String(PlayerKillCount[36])+","+String(PlayerKillCount[37])+","+String(PlayerKillCount[38])+","+String(PlayerKillCount[39])+","+String(PlayerKillCount[40])+","+String(PlayerKillCount[41])+","+String(PlayerKillCount[42])+","+String(PlayerKillCount[43])+","+String(PlayerKillCount[44])+","+String(PlayerKillCount[45])+","+String(PlayerKillCount[46])+","+String(PlayerKillCount[47])+","+String(PlayerKillCount[48])+","+String(PlayerKillCount[49])+","+String(PlayerKillCount[50])+","+String(PlayerKillCount[51])+","+String(PlayerKillCount[52])+","+String(PlayerKillCount[53])+","+String(PlayerKillCount[54])+","+String(PlayerKillCount[55])+","+String(PlayerKillCount[56])+","+String(PlayerKillCount[57])+","+String(PlayerKillCount[58])+","+String(PlayerKillCount[59])+","+String(PlayerKillCount[60])+","+String(PlayerKillCount[61])+","+String(PlayerKillCount[62])+","+String(PlayerKillCount[63]);
   Serial.println(LCDText);
   SerialLCD.println(LCDText);
   Serial.println("Sent LCD data to ESP8266");
 }
-
+//******************************************************************************************
+void debugIR() {
+  // create a string that looks like this: 
+  // (IR Direction, 0), (Bullet Type, token 1), (Player ID, token 2) (Team, tokens 3), (Damage, 4), (Is Critical, 5), (Power, 6)
+  String LCDText = String(tokenStrings[1])+","+String(tokenStrings[2])+","+String(tokenStrings[3])+","+String(tokenStrings[4])+","+String(tokenStrings[5])+","+String(tokenStrings[6])+","+String(tokenStrings[7]);
+  Serial.println(LCDText);
+  SerialLCD.println(LCDText);
+  Serial.println("Sent LCD data to ESP8266");
+}
+//******************************************************************************************
 void BLESetup(){
 BLEDevice::init("");
 
@@ -1078,13 +974,12 @@ BLEDevice::init("");
   pBLEScan->setActiveScan(true);
   pBLEScan->start(10, true);
 
-
   pClient  = BLEDevice::createClient();
   pClient->setClientCallbacks(new MyClientCallback());
   }
 
 //******************************************************************************************
-//******************************************************************************************
+//*********************** THIS IS A LOOP FOR SECOND CORE ***********************************
 //******************************************************************************************
 // serial communications that is pinned to second core in set up
 // this is where we write to variable to configure settings to send over BLE to tagger
@@ -1096,6 +991,10 @@ void serialTask(void * params){
   for(;;){
     if (settingsallowed1>0) {settingsallowed=0;} // checking that a trigger was set from other core, if so, disabling it on this core
     if (TurnOffAudio) {AUDIO=false; AudioPlayCounter=0;}
+    if (IRTOTRANSMIT) {
+      debugIR();
+      IRTOTRANSMIT = false;
+    }
     if (TAGGERUPDATE){
       Serial.println("Disabled LCD Data Send for BLE Core Triggered");
       TAGGERUPDATE1=true;
@@ -1123,14 +1022,14 @@ void serialTask(void * params){
       if(readtxt.toInt()==101) {settingsallowed=2; AudioSelection="VA5F"; SetSlotB=100; Serial.println("Weapon Slot 1 set to Manual");}
       if(readtxt.toInt() > 101 && readtxt.toInt() < 200) {SetSlotB=readtxt.toInt()-101; Serial.println("Weapon Slot 1 set"); AudioSelection="VA9T";}
       // setting objective count
-      if(readtxt.toInt()==200) {SetObj=32000; Serial.println("Objectives to win set to Unlimited"); AudioSelection="VA6V";}
+      if(readtxt.toInt()==209) {SetObj=32000; Serial.println("Objectives to win set to Unlimited"); AudioSelection="VA6V";}
       if(readtxt.toInt() > 200 && readtxt.toInt() < 300) {SetObj=(readtxt.toInt() - 200); Serial.println("Objectives to win set to " + String(Objectives)); AudioSelection="VA7P";}
       // setting kill count goal
       if(readtxt.toInt() > 300 && readtxt.toInt() < 400) {MaxKills=(readtxt.toInt() - 300); Serial.println("Kills to win set to " + String(MaxKills)); AudioSelection="VN8";}
-      if(readtxt.toInt()==300) {MaxKills=32000; Serial.println("Kills to win set to Unlimited"); AudioSelection="VA6V";}
+      if(readtxt.toInt()==309) {MaxKills=32000; Serial.println("Kills to win set to Unlimited"); AudioSelection="VA6V";}
       // setting player lives
       if(readtxt.toInt() > 400 && readtxt.toInt() < 500) {SetLives=(readtxt.toInt() - 400); Serial.println("Player Lives set to " + String(PlayerLives)); AudioSelection="VA47";}
-      if(readtxt.toInt()==400) {PlayerLives=32000; Serial.println("Kills to win set to Unlimited"); AudioSelection="VA6V";}
+      if(readtxt.toInt()==409) {PlayerLives=32000; Serial.println("Kills to win set to Unlimited"); AudioSelection="VA6V";}
       // setting game time
       if(readtxt.toInt()==501) {SetTime=60000; Serial.println("Game time set to 1 minute"); AudioSelection="VA0V";}
       if(readtxt.toInt()==502) {SetTime=300000; Serial.println("Game time set to 5 minute"); AudioSelection="VA2S";}
@@ -1228,7 +1127,7 @@ void serialTask(void * params){
       if(readtxt.toInt()==1008) {DelayStart=600000; Serial.println("Delay Start Set to 10 minutes"); AudioSelection="VA6H";}
       if(readtxt.toInt()==1009) {DelayStart=900000; Serial.println("Delay Start Set to 15 minutes"); AudioSelection="VA2P";}
       // Sync Score Request Recieved
-      if(readtxt.toInt()==1101) {SyncScores; Serial.println("Request Recieved to Sync Scoring"); AudioSelection="VA91";}
+      if(readtxt.toInt()==1101) {SyncScores(); Serial.println("Request Recieved to Sync Scoring"); AudioSelection="VA91";}
       // setting gender
       if(readtxt.toInt()==1200) {SetGNDR=0; Serial.println("Gender set to Male"); AudioSelection="V3I";}
       if(readtxt.toInt()==1201) {SetGNDR=1; Serial.println("Gender set to Female"); AudioSelection="VBI";}
@@ -1248,6 +1147,10 @@ void serialTask(void * params){
       if(1600 > readtxt.toInt() && readtxt.toInt() > 0) {AUDIO=true;}
       if (readtxt.toInt() == 1801) {ENABLEBLE = true; Serial.println("Enabling BLE Pairing"); BLESetup();} // enables lockout of tagger by blynk
       if (readtxt.toInt() == 1901) {esp_deep_sleep_start();}
+      if (readtxt.toInt() == 2001) {IRDEBUG = true; Serial.println("Enabling IR Debug");} // enables IR Debug mode
+      if (readtxt.toInt() == 2000) {IRDEBUG = false; Serial.println("Disabling IR Debug");} // disable IR debug mode
+      if (readtxt.toInt() == 2801) {INITIALIZEOTA = true; Serial.println("Enabling OTA Updates"); ENABLEBLE = false;}
+      if (readtxt.toInt() == 2800) {INITIALIZEOTA = false; Serial.println("Disabling OTA Updates"); ENABLEBLE = false; ENABLEOTAUPDATE = false;}
     }
     delay(1000);
   }
@@ -1262,7 +1165,9 @@ void setup() {
   Serial.println("Starting Arduino BLE Client application...");
   SerialLCD.begin(9600,SERIAL_8N1, 16, 17); // setting up serial communication with ESP8266 on pins 16/17 w baud rate of 9600
   // delay(5000); not needed anymore
-  
+
+  pinMode(led, OUTPUT);
+  digitalWrite(led,  ledState);
 
   xTaskCreatePinnedToCore( // pins the serial task loop to the second core
     serialTask,
@@ -1281,6 +1186,36 @@ void setup() {
 
 // This is the Arduino main loop function for the BLE Core.
 void loop() {
+  if (FAKESCORE) {
+    //String LCDText = String(GunID)+","+String(SetTeam)+","+String(CompletedObjectives)+","+String(TeamKillCount[0])+","+String(TeamKillCount[1])+","+String(TeamKillCount[2])+","+String(TeamKillCount[3])+","+String(TeamKillCount[4])+","+String(TeamKillCount[5])+","+String(PlayerKillCount[0])+","+String(PlayerKillCount[1])+","+String(PlayerKillCount[2])+","+String(PlayerKillCount[3])+","+String(PlayerKillCount[4])+","+String(PlayerKillCount[5])+","+String(PlayerKillCount[6])+","+String(PlayerKillCount[7])+","+String(PlayerKillCount[8])+","+String(PlayerKillCount[9])+","+String(PlayerKillCount[10])+","+String(PlayerKillCount[11])+","+String(PlayerKillCount[12])+","+String(PlayerKillCount[13])+","+String(PlayerKillCount[14])+","+String(PlayerKillCount[15])+","+String(PlayerKillCount[16])+","+String(PlayerKillCount[17])+","+String(PlayerKillCount[18])+","+String(PlayerKillCount[19])+","+String(PlayerKillCount[20])+","+String(PlayerKillCount[21])+","+String(PlayerKillCount[22])+","+String(PlayerKillCount[23])+","+String(PlayerKillCount[24])+","+String(PlayerKillCount[25])+","+String(PlayerKillCount[26])+","+String(PlayerKillCount[27])+","+String(PlayerKillCount[28])+","+String(PlayerKillCount[29])+","+String(PlayerKillCount[30])+","+String(PlayerKillCount[31])+","+String(PlayerKillCount[32])+","+String(PlayerKillCount[33])+","+String(PlayerKillCount[34])+","+String(PlayerKillCount[35])+","+String(PlayerKillCount[36])+","+String(PlayerKillCount[37])+","+String(PlayerKillCount[38])+","+String(PlayerKillCount[39])+","+String(PlayerKillCount[40])+","+String(PlayerKillCount[41])+","+String(PlayerKillCount[42])+","+String(PlayerKillCount[43])+","+String(PlayerKillCount[44])+","+String(PlayerKillCount[45])+","+String(PlayerKillCount[46])+","+String(PlayerKillCount[47])+","+String(PlayerKillCount[48])+","+String(PlayerKillCount[49])+","+String(PlayerKillCount[50])+","+String(PlayerKillCount[51])+","+String(PlayerKillCount[52])+","+String(PlayerKillCount[53])+","+String(PlayerKillCount[54])+","+String(PlayerKillCount[55])+","+String(PlayerKillCount[56])+","+String(PlayerKillCount[57])+","+String(PlayerKillCount[58])+","+String(PlayerKillCount[59])+","+String(PlayerKillCount[60])+","+String(PlayerKillCount[61])+","+String(PlayerKillCount[62])+","+String(PlayerKillCount[63]));
+    SetTeam = 3;
+    CompletedObjectives = 20;
+    int fauxcounter = 0;
+    while(fauxcounter < 6) {
+      TeamKillCount[fauxcounter] = 20;
+      fauxcounter++;
+    }
+    fauxcounter = 0;
+    while (fauxcounter < 64) {
+      PlayerKillCount[fauxcounter] = 20;
+      fauxcounter++;
+    }
+    FAKESCORE = false;
+  }
+  if (INITIALIZEOTA) {InitializeOTAUpdater();}
+  while (ENABLEOTAUPDATE) {
+    ArduinoOTA.handle();
+    //loop to blink without delay
+    unsigned long currentMillis = millis();
+    if (currentMillis - previousMillis >= interval) {
+      // save the last time you blinked the LED
+      previousMillis = currentMillis;
+      // if the LED is off turn it on and vice-versa:
+      ledState = not(ledState);
+      // set the LED with the ledState of the variable:
+      digitalWrite(led,  ledState);
+      }
+    }
   while (ENABLEBLE) {
   // the main loop for BLE activity is here, it is devided in three sections....
   // sections are for when connected, when not connected and to connect again
