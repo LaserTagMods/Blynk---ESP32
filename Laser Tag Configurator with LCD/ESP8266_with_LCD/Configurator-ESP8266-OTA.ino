@@ -129,14 +129,14 @@ BlynkTimer IRDataRead; // created a timer object called "IRDataRead"
 BlynkTimer OTAUpdateLoop; // timer object for updating over wifi
 
 #ifndef RX
-#define RX 14 // D7=13 to pin 17 on esp32, try D5 or 14
+//#define RX 14 // D7=13 to pin 17 on esp32, try D5 or 14
 //#define RX 13 // D7=13 to pin 17 on esp32, try D5 or 14
-//#define RX 0 // D7=13 to pin 17 on esp32, try D5 or 14, D3 is 0
+#define RX 0 // D7=13 to pin 17 on esp32, try D5 or 14, D3 is 0
 #endif
 #ifndef TX
-#define TX 12 // D8=15 to pin 16 on esp32, try D6 or 12
+//#define TX 12 // D8=15 to pin 16 on esp32, try D6 or 12
 // #define TX 15 // D8=15 to pin 16 on esp32, try D6 or 12
-//#define TX 2 // D8=15 to pin 16 on esp32, try D6 or 12, D4 is 2 
+#define TX 2 // D8=15 to pin 16 on esp32, try D6 or 12, D4 is 2 
 #endif
 int PowerPin = D7;  // D7 is 13 - Pin used to override the main power switch on tagger as a lockout function
 const int ESP_BUILTIN_LED = 2;
