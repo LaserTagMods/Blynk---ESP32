@@ -74,8 +74,8 @@ WidgetBridge bridge1(V1);
 char auth[] = "nhyqI7ejfjTebH-KI5x9kndOhKoAhyTz";
 // Your WiFi credentials.
 // Set password to "" for open networks.
-char ssid[] = "maxipad";
-char pass[] = "9165047812";
+char ssid[] = "SSID";
+char pass[] = "Password";
 // set the bridge token
 BLYNK_CONNECTED() {
   bridge1.setAuthToken("slcCz6BNVlNAFh5XKRBrREydDDfXIEoB"); // Token of the device 2 or scoring device
