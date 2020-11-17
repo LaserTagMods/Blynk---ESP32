@@ -1,5 +1,4 @@
 /* ESP8266 Laser Tag Game Controller And Comms Device
- *  
  *  **************************************************
  *  this sketch is for an esp8266 to work in conjunction with an esp32
  *  the esp8266 is used for obtaining network/server data and relaying
@@ -70,12 +69,12 @@ WidgetBridge bridge1(V1);
 //**********************************************************************************
 // You should get Auth Token in the Blynk App.
 // Go to the Project Settings (nut icon).
-//char auth[] = "utieZeB7dJLmtGlz2S3KL9M7-icUDuDN";
-char auth[] = "nhyqI7ejfjTebH-KI5x9kndOhKoAhyTz";
+char auth[] = "g3Nl5QsEc_CseHRSXNUjMyWv3PU8La9Y";
+//char auth[] = "nhyqI7ejfjTebH-KI5x9kndOhKoAhyTz";
 // Your WiFi credentials.
 // Set password to "" for open networks.
-char ssid[] = "SSID";
-char pass[] = "Password";
+char ssid[] = "maxipad";
+char pass[] = "9165047812";
 // set the bridge token
 BLYNK_CONNECTED() {
   bridge1.setAuthToken("slcCz6BNVlNAFh5XKRBrREydDDfXIEoB"); // Token of the device 2 or scoring device
@@ -129,14 +128,14 @@ BlynkTimer IRDataRead; // created a timer object called "IRDataRead"
 BlynkTimer OTAUpdateLoop; // timer object for updating over wifi
 
 #ifndef RX
-//#define RX 14 // D7=13 to pin 17 on esp32, try D5 or 14
-//#define RX 13 // D7=13 to pin 17 on esp32, try D5 or 14
-#define RX 0 // D7=13 to pin 17 on esp32, try D5 or 14, D3 is 0
+//#define RX 14 // D5=14 to pin 17 on esp32
+//#define RX 13 // D7=13 to pin 17 on esp32
+#define RX 0 // D3=0 to pin 17 on esp32
 #endif
 #ifndef TX
-//#define TX 12 // D8=15 to pin 16 on esp32, try D6 or 12
-// #define TX 15 // D8=15 to pin 16 on esp32, try D6 or 12
-#define TX 2 // D8=15 to pin 16 on esp32, try D6 or 12, D4 is 2 
+//#define TX 12 // D6=12 to pin 16 on esp32
+// #define TX 15 // D8=15 to pin 16 on esp32
+#define TX 2 // D4=2 to pin 16 on esp32 
 #endif
 int PowerPin = D7;  // D7 is 13 - Pin used to override the main power switch on tagger as a lockout function
 const int ESP_BUILTIN_LED = 2;
@@ -458,19 +457,19 @@ if (b==20) {ToESP32=120; SendESP32Data(); Serial.println("Weapon Slot 1 is set t
 }
 }
 
-// Sets Objective Goals
+// Sets Special Class
 BLYNK_WRITE(V2) {
 int b=param.asInt();
 if (LOCKOUT==false){
-if (b==9) {ToESP32=400; SendESP32Data(); Serial.println("Objectives is set to Unlimited");}
-if (b==8) {ToESP32=450; SendESP32Data(); Serial.println("Objectives is set to 50");}
-if (b==7) {ToESP32=425; SendESP32Data(); Serial.println("Objectives is set to 25");}
-if (b==6) {ToESP32=420; SendESP32Data(); Serial.println("Objectives is set to 20");}
-if (b==5) {ToESP32=415; SendESP32Data(); Serial.println("Objectives is set to 15");}
-if (b==4) {ToESP32=410; SendESP32Data(); Serial.println("Objectives is set to 10");}
-if (b==3) {ToESP32=405; SendESP32Data(); Serial.println("Objectives is set to 5");}
-if (b==2) {ToESP32=403; SendESP32Data(); Serial.println("Objectives is set to 3");}
-if (b==1) {ToESP32=401; SendESP32Data(); Serial.println("Objectives is set to 1");}
+if (b==9) {ToESP32=209; SendESP32Data(); Serial.println("");}
+if (b==8) {ToESP32=208; SendESP32Data(); Serial.println("");}
+if (b==7) {ToESP32=207; SendESP32Data(); Serial.println("");}
+if (b==6) {ToESP32=206; SendESP32Data(); Serial.println("VIP");}
+if (b==5) {ToESP32=205; SendESP32Data(); Serial.println("Jugernaut");}
+if (b==4) {ToESP32=204; SendESP32Data(); Serial.println("Munitions Expert");}
+if (b==3) {ToESP32=203; SendESP32Data(); Serial.println("Medic");}
+if (b==2) {ToESP32=202; SendESP32Data(); Serial.println("Respawn Allies");}
+if (b==1) {ToESP32=201; SendESP32Data(); Serial.println("None - Default");}
 }
 }
 
@@ -581,8 +580,8 @@ if (b==3) {ToESP32=903; SendESP32Data(); Serial.println("Respawn is set to 30 se
 if (b==4) {ToESP32=904; SendESP32Data(); Serial.println("Respawn is set to 45 seconds  (auto)");}
 if (b==5) {ToESP32=905; SendESP32Data(); Serial.println("Respawn is set to 60 seconds (auto)");}
 if (b==6) {ToESP32=906; SendESP32Data(); Serial.println("Respawn is set to 90 seconds (auto)");}
-if (b==7) {ToESP32=907; SendESP32Data(); Serial.println("Respawn is set to Ramp 45 (auto)");}
-if (b==8) {ToESP32=908; SendESP32Data(); Serial.println("Respawn is set to Ramp 90 (auto)");}
+if (b==7) {ToESP32=907; SendESP32Data(); Serial.println("Respawn is set to 120 seconds (auto)");}
+if (b==8) {ToESP32=908; SendESP32Data(); Serial.println("Respawn is set to 150 seconds (auto)");}
 if (b==9) {ToESP32=909; SendESP32Data(); Serial.println("Respawn is set to Respawn Station (manual)");}
 }
 }
@@ -713,8 +712,8 @@ void setup()
 //**********************************************************************************
 //****************************  UPDATE THIS SECTION!!!!! ***************************
 //**********************************************************************************
-  // Blynk.begin(auth, ssid, pass, IPAddress(192,168,1,117), 8080); // 192.168.137.1
-  Blynk.begin(auth, ssid, pass);
+  Blynk.begin(auth, ssid, pass, IPAddress(10,10,0,67), 8080);
+  //Blynk.begin(auth, ssid, pass);
 //**********************************************************************************
 //****************************  UPDATE THIS SECTION!!!!! ***************************
 //**********************************************************************************
