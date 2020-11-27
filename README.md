@@ -83,18 +83,46 @@ https://github.com/blynkkk/blynk-server
 		first connect to the router or access point.. then run the blynk server.. in that order!
 	then you can open the blynk app and login to the server...
 
-Alternatively, install on a raspberry Pi: 
+**** Alternatively, install on a raspberry Pi *******
 https://github.com/blynkkk/blynk-server
 
 reference raspberry pi install instructions, then set it so it launches automatically by following instructions labeled: 
 "Enabling server auto restart on unix-like systems"
 
+//***************************************************
+//********   Step 3. Prepping the BRX   *************
+//***************************************************
+The BRX has some anoying audio files and limited gun name conventions in the audio driver. 
+Within the repository are new audio files that should be added to each BRX Audio folder. 
+Also, delete or rename the following audio file names to make them stop being annoying or interupting start up time
+
+I just renamed them so i can recall them later if I want:
+VA9U changed to XYZ1
+JA9 changed to XYZ2
+
+Others just have changed the extension from LTP to OLD, whatever works.
+
+Keep in mind that if you remove the music, it does limit your ability to put the tagger into target mode, target mode requires a button held for an extended time before getting into game options.
+
+You need to rename your BRX Gen2s in order for the esp32 to pair correctly. Make sure you know the name of the bluetooth module for each tagger and have it written down, on the gun, whatever. So when you get to section 4 below you have what you need. 
+
+If you need to rename a tagger because of duplicate tagger bluetooth ID/Name, DO IT NOW!!! they all need unique names or your going to have pairing issues and configurators fighting over taggers. 
+
+If you do not know how to rename the bluetooth ID, simply pair the tagger with your phone in callsign, but log in to callsign with a different account/name each time... yes this requires you to create an email for each tagger/callsign ID. sorry, but this is the long way to do it... the other way to do it is by sending the bluetooth tag to the tagger, which is a rough way to go.. I havent developed an easy way to do that... i guess I should have.. but it is what it is, I created emails for each tagger of mine a long time ago so its not something i really plan on doing for y'all. sorry, You may be able to pair a tagger with an android and then change the device name that way, or pair it with a PC and serial device to send a new name to it... if your not experienced with sending custom UART commands though... never mind... just create a bunch of gmail accounts and callsign accounts...
 
 //***************************************************
-//************2. Preping a Controller ***************
+//************  4. Preping Controller ***************
 //***************************************************
 Use ESP8266 mini or other is used for score tracking and game clock tracking as well
 This is a non-essential device but if you want scoring reporting on the blynk app, it is essential
+
+Check to see the authorization code for both the scoring device as well as the configurator. Both of these codes need to be copied and pasted and entered into the code...
+
+Also make sure to adjust the quantity of taggers you have/using with configurators.
+
+Watch these videos for tips and understand what im talking about above:
+https://youtu.be/oSk3vjSn00U
+https://youtu.be/WS5DaqnMdFM
 
 
 //***************************************************
@@ -107,7 +135,7 @@ Hardware: ESP32 D1 Mini & ESP8266 D1 Mini
 Solder, connect, wire, etc. pins: 
 16 to D4, 17 to D3, Vcc to Vcc, Gnd to Gnd
 
-Board Manager:
+Board Manager Specifics:
 ESP32: Use Wemos D1 Mini ESP32 board and change partition scheme to "Minimum Spiffs (large apps with OTA)"
 ESP8266: Use Lolin(Wemos) D1 R2 and Mini
 
@@ -115,3 +143,34 @@ Before thinking about uploading the software, watch the following tips videos fo
 ESP32 code: https://youtu.be/S4vJf7yOa5A
 ESP 8266 code: https://youtu.be/wFU6d7hrfCg
 Also make sure you do the blynk stuff first!!! you need your blynk authentication codes!!!
+
+Key points:
+1. Update the Tagger ID # for each tagger in both codes/modules (32/8266)
+2. Update the wifi network you are using (32/8266)
+3. update the Bluetooth ID for the tagger your working on (32)
+4. update the server settings in the setup section of the code near the bottom of the code (8266)
+5. repeat #1 and #3 for each additional configurator, #'s 2/4 stay the same for each tagger
+
+When uploading the code to the 8266, you may need to hold the esp32 reset button if arduino IDE doesnt detect the 8266 while attempting to upload.
+
+I recommend testing one tagger out before proceeding the the next one to make sure you got it right and before you repeat the process for multiple taggers
+
+
+//***************************************************
+//************     5. OTA Updating    ***************
+//***************************************************
+
+If you are updating to a new configurator firmware version/release and are already running an OTA version:
+
+1. Pressing the OTA button causes both the esp8266 and the esp32 for the configurator to enter OTA UPDATE MODE. You will see that the LEDs on the modules begin to flash.
+2. They must be on the wifi network entered in the original settings changed in section 4 above.
+3. Your computer running Arduino IDE must be on the same network. 
+4. Close and Re-open your Arduino IDE
+5. Under tools in the Arduino IDE, you will now see the serial numbers listed for all the taggers that are sitting in OTA UPDATE Mode. IF they are not listed, restart your computer (ive seen this required some times for me, not sure why. Also, If not fixed, then you havent installed python on your PC... Follow these online tutorials
+
+Skip to step #2 here for how to upload a new sketch, obviously change the sketch to be an updated configurator 8266 or 32 sketch: https://randomnerdtutorials.com/esp8266-ota-updates-with-arduino-ide-over-the-air/
+
+For Python installation to enable OTA update from your Arduino IDE, follow Step #1: https://lastminuteengineers.com/esp8266-ota-updates-arduino-ide/
+
+
+
