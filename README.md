@@ -173,4 +173,21 @@ Skip to step #2 here for how to upload a new sketch, obviously change the sketch
 For Python installation to enable OTA update from your Arduino IDE, follow Step #1: https://lastminuteengineers.com/esp8266-ota-updates-arduino-ide/
 
 
+//***************************************************
+//********     6. Configurator install    ***********
+//***************************************************
 
+Gen 2 install:
+
+https://youtu.be/rDPo6_XNH6k
+
+
+
+//***************************************************
+//******     7.  Using the Configurator    ********
+//***************************************************
+
+Turn in the taggers, have the Configurator running, press enable BLE controll
+
+Here is the settings walkthrough:
+https://youtu.be/9SlVQpf7_Y8
