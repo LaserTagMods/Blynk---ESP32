@@ -70,11 +70,11 @@ WidgetBridge bridge1(V1);
 // You should get Auth Token in the Blynk App.
 // Go to the Project Settings (nut icon).
 char auth[] = "g3Nl5QsEc_CseHRSXNUjMyWv3PU8La9Y";
-//char auth[] = "nhyqI7ejfjTebH-KI5x9kndOhKoAhyTz";
+//char auth[] = "nhyqI7ejfjTebH-KI5x9kndOhKoAhyTz"; // this is the Configurator blynk authentication token
 // Your WiFi credentials.
 // Set password to "" for open networks.
-char ssid[] = "maxipad";
-char pass[] = "9165047812";
+char ssid[] = "SSID"; // this is your WiFi name
+char pass[] = "12345678"; // this is your WiFi password
 // set the bridge token
 BLYNK_CONNECTED() {
   bridge1.setAuthToken("slcCz6BNVlNAFh5XKRBrREydDDfXIEoB"); // Token of the device 2 or scoring device
@@ -712,8 +712,8 @@ void setup()
 //**********************************************************************************
 //****************************  UPDATE THIS SECTION!!!!! ***************************
 //**********************************************************************************
-  Blynk.begin(auth, ssid, pass, IPAddress(10,10,0,67), 8080);
-  //Blynk.begin(auth, ssid, pass);
+  Blynk.begin(auth, ssid, pass, IPAddress(10,10,0,67), 8080); // use this if you are running your own local server, UPDATE THE IP ADDRESS FOR YOUR SERVER ADDRESS ON YOUR NETWORK
+  //Blynk.begin(auth, ssid, pass); // use this if you are using the blynk cloud server
 //**********************************************************************************
 //****************************  UPDATE THIS SECTION!!!!! ***************************
 //**********************************************************************************
