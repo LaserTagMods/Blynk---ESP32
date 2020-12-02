@@ -79,22 +79,24 @@ HardwareSerial SerialLCD( 1 );
 // this is important it is how we filter
 // out unwanted guns or other devices that use UART BLE characteristics you need to change 
 // this to the name of the gun ble server
-// The remote service we wish to connect to, all guns should be the same as
-// this is an uart comms set up
-static BLEUUID serviceUUID("6E400001-B5A3-F393-E0A9-E50E24DCCA9E"); // CHANGE ME!!!!!!!
-// The characteristic of the remote service we are interested in.
-// these uuids are used to send and recieve data
-static BLEUUID    charRXUUID("6E400002-B5A3-F393-E0A9-E50E24DCCA9E"); // CHANGE ME!!!!
-static BLEUUID    charTXUUID("6E400003-B5A3-F393-E0A9-E50E24DCCA9E"); // CHANGE ME !!!!
 int GunID = 6; // this is the gun or player ID, each esp32 needs a different one, set "0-63"
 // This is the WIFI info for OTA Update Mode
-const char* ssid = "maxipad";
-const char* password = "9165047812";
+const char* ssid = "SSID"; // local WiFi name for when updating OTA
+const char* password = "12345678"; // local WiFi password
 //******************* IMPORTANT *********************
 //******************* IMPORTANT *********************
 //******************* IMPORTANT *********************
 
 //****************************************************************
+
+// The remote service we wish to connect to, all guns should be the same as
+// this is an uart comms set up
+static BLEUUID serviceUUID("6E400001-B5A3-F393-E0A9-E50E24DCCA9E");
+// The characteristic of the remote service we are interested in.
+// these uuids are used to send and recieve data
+static BLEUUID    charRXUUID("6E400002-B5A3-F393-E0A9-E50E24DCCA9E");
+static BLEUUID    charTXUUID("6E400003-B5A3-F393-E0A9-E50E24DCCA9E");
+
 // variables used for ble set up
 static boolean doConnect = false;
 static boolean connected = false;
