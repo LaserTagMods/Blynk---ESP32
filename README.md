@@ -93,7 +93,10 @@ reference raspberry pi install instructions, then set it so it launches automati
 //********   Step 3. Prepping the BRX   *************
 //***************************************************
 The BRX has some anoying audio files and limited gun name conventions in the audio driver. 
-Within the repository are new audio files that should be added to each BRX Audio folder. 
+Within the repository are new audio files that should be added to each BRX Audio folder. The files
+Are GN01 through GN19. These are used by the Configurator to identify what gun players are selecting when manual
+Weapon selection is enabled. This is highly recommended. Also it's Paul's voice which makes it kinda cool
+
 Also, delete or rename the following audio file names to make them stop being annoying or interupting start up time
 
 I just renamed them so i can recall them later if I want:
@@ -111,7 +114,7 @@ If you need to rename a tagger because of duplicate tagger bluetooth ID/Name, DO
 If you do not know how to rename the bluetooth ID, simply pair the tagger with your phone in callsign, but log in to callsign with a different account/name each time... yes this requires you to create an email for each tagger/callsign ID. sorry, but this is the long way to do it... the other way to do it is by sending the bluetooth tag to the tagger, which is a rough way to go.. I havent developed an easy way to do that... i guess I should have.. but it is what it is, I created emails for each tagger of mine a long time ago so its not something i really plan on doing for y'all. sorry, You may be able to pair a tagger with an android and then change the device name that way, or pair it with a PC and serial device to send a new name to it... if your not experienced with sending custom UART commands though... never mind... just create a bunch of gmail accounts and callsign accounts...
 
 //***************************************************
-//************  4. Preping Controller ***************
+//****  4. Preping Controller - scoring device ******
 //***************************************************
 Use ESP8266 mini or other is used for score tracking and game clock tracking as well
 This is a non-essential device but if you want scoring reporting on the blynk app, it is essential
@@ -133,7 +136,7 @@ Gen 2 and later:
 Hardware: ESP32 D1 Mini & ESP8266 D1 Mini
 
 Solder, connect, wire, etc. pins: 
-16 to D4, 17 to D3, Vcc to Vcc, Gnd to Gnd
+16 to D4, 17 to D3, Vcc to Vcc, Gnd to Gnd (this is if your using the recommended hardware selection
 
 Board Manager Specifics:
 ESP32: Use Wemos D1 Mini ESP32 board and change partition scheme to "Minimum Spiffs (large apps with OTA)"
