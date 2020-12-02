@@ -151,7 +151,7 @@ Key points:
 1. Update the Tagger ID # for each tagger in both codes/modules (32/8266)
 2. Update the wifi network you are using (32/8266)
 3. update the Bluetooth ID for the tagger your working on (32)
-4. update the server settings in the setup section of the code near the bottom of the code (8266)
+4. update the server settings in the setup section of the code near the bottom of the code under the setup portion (8266)
 5. repeat #1 and #3 for each additional configurator, #'s 2/4 stay the same for each tagger
 
 When uploading the code to the 8266, you may need to hold the esp32 reset button if arduino IDE doesnt detect the 8266 while attempting to upload.
