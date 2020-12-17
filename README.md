@@ -194,3 +194,29 @@ Turn in the taggers, have the Configurator running, press enable BLE controll
 
 Here is the settings walkthrough:
 https://youtu.be/9SlVQpf7_Y8
+
+
+
+//***************************************************
+//******     8.  App Updates    ********
+//***************************************************
+
+Any time you need/want to update the blynk app for changes 
+made, this brings in a brand new app with a new authentication 
+token for your devices. This will make it impossible for your 
+devices to connect to the new app because the old auth token 
+is written into the code of the esp devices... therefore, your 
+devices need to be updated with a new sketch from arduino before 
+you can use the new app. This is easy to manage by just following 
+an important order of operations.
+
+1. In the blink app back out of the current app/project by tapping on 
+The top left hand icon that looks like several pages.
+2. A week scanner icon will appear in the top right corner. Tap it.
+3. Scan the updated app QR code to automatically bring in the new app.
+4. The old app will still be available on your phone and the server
+5. Check the new app's updated auth tokens, and copy them down to type or paste.
+6. Update the old token in arduino ide or on the new sketch if applicable
+7. Using the old app, place your devices in OTA mode and follow the instructions for OTA UPDATES
+8. After updating them the new app will allow for the devices to connect since it uses the new auth token
+9. Rename the old app if you want to keep it on your server or delete it if you decide to no longer keep use it
